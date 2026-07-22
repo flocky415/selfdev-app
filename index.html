@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SelfDev</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+
+<meta name="theme-color" content="#4F46E5">
+
+</head>
+
+<body>
+
+<header>
+
+<div id="toast"></div>
+
+<h1>🚀 SelfDev</h1>
+
+<button type="button" id="themeBtn" onclick="toggleTheme()">
+🌙
+</button>
+
+</header>
+
+<nav>
+
+<button type="button" class="tab active" data-page="home">
+🏠
+</button>
+
+<button type="button" class="tab" data-page="habits">
+✅
+</button>
+
+<button type="button" class="tab" data-page="goals">
+🎯
+</button>
+
+<button type="button" class="tab" data-page="timer">
+⏱
+</button>
+
+<button type="button" class="tab" data-page="stats">
+📈
+</button>
+
+<button type="button" class="tab" data-page="notes">
+📖
+</button>
+
+</nav>
+
+<main>
+
+<section id="home" class="page active">
+
+<h2>🏠 Головна</h2>
+
+<div class="card">
+
+<h3>📅 Сьогодні</h3>
+
+<p id="today"></p>
+
+</div>
+
+<div class="card">
+
+<h3>📈 Прогрес</h3>
+
+<div class="xpCircle">
+
+<svg width="170" height="170">
+
+<circle
+cx="85"
+cy="85"
+r="70"
+class="bgCircle"/>
+
+<circle
+cx="85"
+cy="85"
+r="70"
+id="xpCircle"
+class="progressCircle"/>
+
+</svg>
+
+<div class="circleText">
+
+<div id="level">1</div>
+
+<small>LEVEL</small>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>🏆 Досягнення</h3>
+
+<p id="achievementText">
+
+Почни виконувати звички 🚀
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h3>⭐ Наступний рівень</h3>
+
+<p id="nextLevelText">
+
+Залишилось 100 XP
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h3>📊 Прогрес дня</h3>
+
+<div class="progress">
+
+<div id="dayProgress"></div>
+
+</div>
+
+<p id="dayProgressText">
+
+0%
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h3>🥇 Мої досягнення</h3>
+
+<ul id="achievementList">
+
+<li>🔒 Перше виконане завдання</li>
+
+<li>🔒 10 виконаних звичок</li>
+
+<li>🔒 100 XP</li>
+
+<li>🔒 500 XP</li>
+
+<li>🔒 1000 XP</li>
+
+</ul>
+
+</div>
+
+</section>
+
+<section id="habits" class="page">
+
+<h2>Звички</h2>
+
+<input id="habitInput" placeholder="Нова звичка">
+<input
+id="habitSearch"
+placeholder="🔍 Пошук звички"
+onkeyup="searchHabits()">
+
+<button type="button" onclick="addHabit()">
+Додати
+</button>
+
+<ul id="habitList"></ul>
+
+</section>
+
+<section id="goals" class="page">
+
+<h2>Цілі</h2>
+
+<input id="goalInput" placeholder="Нова ціль">
+<input
+id="goalSearch"
+placeholder="🔍 Пошук цілі"
+onkeyup="searchGoals()">
+
+<button type="button" onclick="addGoal()">
+Додати
+</button>
+
+<ul id="goalList"></ul>
+
+</section>
+
+<section id="timer" class="page">
+
+<h2>Pomodoro</h2>
+
+<div id="timerText">
+
+25:00
+
+</div>
+
+<button type="button" onclick="startTimer()">
+Старт
+</button>
+
+<button type="button" onclick="resetTimer()">
+Скинути
+</button>
+
+</section>
+
+<section id="stats" class="page">
+
+<h2>📈 Статистика</h2>
+
+<div class="card">
+
+<h3>✅ Виконані звички</h3>
+
+<h1 id="habitCount">0</h1>
+
+</div>
+
+<div class="card">
+
+<h3>🎯 Виконані цілі</h3>
+
+<h1 id="goalCount">0</h1>
+
+</div>
+
+<div class="card">
+
+<h3>🔥 Серія днів</h3>
+
+<h1 id="streakCount">0 🔥</h1>
+
+</div>
+
+</section>
+
+<section id="notes" class="page">
+
+<h2>Щоденник</h2>
+
+<textarea id="note"></textarea>
+
+<button type="button" onclick="saveNote()">
+Зберегти
+</button>
+
+<hr>
+
+<h3>💾 Резервна копія</h3>
+
+<button type="button" onclick="exportData()">
+Експортувати
+</button>
+
+<input
+type="file"
+id="importFile"
+style="display:none"
+onchange="importData(event)">
+
+<button type="button" onclick="document.getElementById('importFile').click()">
+Імпортувати
+</button>
+
+</section>
+
+</main>
+
+<script src="app.js"></script>
+
+</body>
+</html>

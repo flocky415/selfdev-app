@@ -437,3 +437,55 @@ margin-left:6px;
 margin-top:0;
 
 }
+
+.quote-card{
+
+background:linear-gradient(135deg,#1e293b,#0f172a);
+
+border-left:5px solid #38bdf8;
+
+}
+
+.quote-card p{
+
+font-size:18px;
+
+line-height:1.7;
+
+font-style:italic;
+
+margin:18px 0;
+
+}
+
+#quoteCategory{
+
+display:inline-block;
+
+padding:6px 12px;
+
+border-radius:20px;
+
+background:#2563eb;
+
+font-size:14px;
+
+font-weight:bold;
+
+color:white;
+
+}
+
+.light .quote-card{
+
+background:white;
+
+border-left:5px solid #2563eb;
+
+}
+
+#quoteText{
+
+transition:.3s;
+
+}

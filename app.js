@@ -637,6 +637,31 @@ note.value = localStorage.getItem("note") || "";
 
 }
 
+function showDailyQuote(){
+
+const days =
+Math.floor(Date.now()/86400000);
+
+const quote =
+quotes[days % quotes.length];
+
+const q=document.getElementById("quoteText");
+
+q.style.opacity=0;
+
+setTimeout(()=>{
+
+q.innerText=quote.text;
+
+q.style.opacity=1;
+
+},250);
+
+document.getElementById("quoteCategory").innerText =
+quote.category;
+
+}
+
 function showToast(text){
 
 const toast=document.getElementById("toast");
@@ -734,6 +759,7 @@ renderHabits();
 renderGoals();
 updateStats();
 updateDayProgress();
+showDailyQuote();
 updateStreak();
 updateAchievements();
 checkAchievements();

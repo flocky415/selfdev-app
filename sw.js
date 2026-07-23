@@ -1,10 +1,11 @@
-const CACHE = "selfdev-v1";
+const CACHE = "selfdev-v2"; // зміни v1 на v2
 
 const FILES = [
     "./",
     "./index.html",
     "./style.css",
     "./app.js",
+    "./quotes.js",
     "./manifest.json"
 ];
 
@@ -30,4 +31,16 @@ self.addEventListener("fetch", e => {
 
     );
 
+});
+
+self.addEventListener("activate", event => {
+    event.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(
+                keys
+                    .filter(key => key !== CACHE)
+                    .map(key => caches.delete(key))
+            )
+        )
+    );
 });

@@ -8,6 +8,22 @@ let lastOpen = localStorage.getItem("lastOpen") || "";
 let habits = JSON.parse(localStorage.getItem("habits")) || [];
 let goals = JSON.parse(localStorage.getItem("goals")) || [];
 
+// Оновлення старих даних
+goals.forEach(goal => {
+    if (goal.pinned === undefined) goal.pinned = false;
+    if (!goal.created) goal.created = new Date().toLocaleString();
+    if (!goal.updated) goal.updated = goal.created;
+});
+
+habits.forEach(habit => {
+    if (habit.pinned === undefined) habit.pinned = false;
+    if (!habit.created) habit.created = new Date().toLocaleString();
+    if (!habit.updated) habit.updated = habit.created;
+});
+
+localStorage.setItem("goals", JSON.stringify(goals));
+localStorage.setItem("habits", JSON.stringify(habits));
+
 let xp = Number(localStorage.getItem("xp")) || 0;
 let level = Number(localStorage.getItem("level")) || 1;
 let theme =
@@ -184,6 +200,7 @@ const list=document.getElementById("habitList");
 
 list.innerHTML="";
 
+habits.sort((a, b) => Number(b.pinned) - Number(a.pinned));
 habits.forEach((habit,index)=>{
 
 const li=document.createElement("li");
@@ -193,13 +210,27 @@ li.classList.add("done");
 
 li.innerHTML=`
 
-<span>${habit.name}</span>
+<div>
+
+<b>${habit.name}</b><br>
+
+<small>📅 ${habit.created}</small><br>
+
+<small>✏️ ${habit.updated}</small>
+
+</div>
 
 <div>
 
+<button onclick="toggleHabitPin(${index})">
+
+${habit.pinned ? "📌" : "📍"}
+
+</button>
+
 <button onclick="toggleHabit(${index})">
 
-${habit.done?"↩":"✔"}
+${habit.done ? "↩" : "✔"}
 
 </button>
 
@@ -273,10 +304,11 @@ return;
 }
 
 habits.push({
-
-name:input.value.trim(),
-done:false
-
+    name: input.value.trim(),
+    done: false,
+    pinned: false,
+    created: new Date().toLocaleString(),
+    updated: new Date().toLocaleString()
 });
 
 input.value="";
@@ -339,6 +371,8 @@ if(text===null) return;
 if(text.trim()=="") return;
 
 habits[index].name=text;
+habits[index].updated = new Date().toLocaleString();
+
 
 save();
 
@@ -352,6 +386,11 @@ const list=document.getElementById("goalList");
 
 list.innerHTML="";
 
+goals.forEach(goal => {
+    if (goal.pinned === undefined) goal.pinned = false;
+    if (!goal.created) goal.created = new Date().toLocaleString();
+    if (!goal.updated) goal.updated = goal.created;
+});
 goals.sort((a, b) => Number(b.pinned) - Number(a.pinned));
 goals.forEach((goal,index)=>{
 
@@ -779,6 +818,16 @@ function togglePin(index){
     save();
 
     renderGoals();
+
+}
+
+function toggleHabitPin(index){
+
+    habits[index].pinned = !habits[index].pinned;
+
+    save();
+
+    renderHabits();
 
 }
 

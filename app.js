@@ -352,6 +352,7 @@ const list=document.getElementById("goalList");
 
 list.innerHTML="";
 
+goals.sort((a, b) => Number(b.pinned) - Number(a.pinned));
 goals.forEach((goal,index)=>{
 
 const li=document.createElement("li");
@@ -361,13 +362,27 @@ li.classList.add("done");
 
 li.innerHTML=`
 
-<span>${goal.name}</span>
+<div>
+
+<b>${goal.name}</b><br>
+
+<small>📅 ${goal.created}</small><br>
+
+<small>✏️ ${goal.updated}</small>
+
+</div>
 
 <div>
 
+<button onclick="togglePin(${index})">
+
+${goal.pinned ? "📌" : "📍"}
+
+</button>
+
 <button onclick="toggleGoal(${index})">
 
-${goal.done?"↩":"✔"}
+${goal.done ? "↩" : "✔"}
 
 </button>
 
@@ -408,10 +423,11 @@ return;
 }
 
 goals.push({
-
-name:input.value.trim(),
-done:false
-
+    name: input.value.trim(),
+    done: false,
+    pinned: false,
+    created: new Date().toLocaleString(),
+    updated: new Date().toLocaleString()
 });
 
 input.value="";
@@ -477,6 +493,7 @@ if(text===null) return;
 if(text.trim()=="") return;
 
 goals[index].name=text;
+goals[index].updated = new Date().toLocaleString();
 
 save();
 
@@ -752,6 +769,16 @@ const note = document.getElementById("note").value;
 localStorage.setItem("note", note);
 
 showToast("📖 Нотатку збережено");
+
+}
+
+function togglePin(index){
+
+    goals[index].pinned = !goals[index].pinned;
+
+    save();
+
+    renderGoals();
 
 }
 

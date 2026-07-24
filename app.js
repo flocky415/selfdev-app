@@ -111,7 +111,7 @@ checkAchievements();
 
 updateLevel();
 
-let timer = 1500;
+
 let interval = null;
 
 function drawTimer(){

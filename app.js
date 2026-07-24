@@ -854,6 +854,21 @@ function savePomodoroTime(){
 
 }
 
+function changePomodoro(step){
+
+    const input = document.getElementById("pomodoroMinutes");
+
+    let value = Number(input.value);
+
+    value += step;
+
+    if(value < 1) value = 1;
+    if(value > 180) value = 180;
+
+    input.value = value;
+
+}
+
 
 renderHabits();
 renderGoals();

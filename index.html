@@ -224,6 +224,19 @@ onkeyup="searchGoals()">
 
 </div>
 
+<label>🍅 Тривалість (хв):</label>
+
+<input
+    type="number"
+    id="pomodoroMinutes"
+    min="1"
+    max="180"
+    value="25">
+
+<button onclick="savePomodoroTime()">
+💾 Зберегти
+</button>
+
 <button type="button" onclick="startTimer()">
 Старт
 </button>

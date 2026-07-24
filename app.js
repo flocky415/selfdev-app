@@ -5,6 +5,9 @@
 let streak = Number(localStorage.getItem("streak")) || 0;
 let lastOpen = localStorage.getItem("lastOpen") || "";
 
+let pomodoroTime = Number(localStorage.getItem("pomodoroTime")) || 1500;
+let timer = pomodoroTime;
+
 let habits = JSON.parse(localStorage.getItem("habits")) || [];
 let goals = JSON.parse(localStorage.getItem("goals")) || [];
 
@@ -637,7 +640,7 @@ updateLevel();
 
 alert("🎉 Pomodoro завершено!");
 
-timer=1500;
+timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
 
 drawTimer();
 
@@ -653,7 +656,7 @@ clearInterval(interval);
 
 interval=null;
 
-timer=1500;
+timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
 
 drawTimer();
 
@@ -830,6 +833,29 @@ function toggleHabitPin(index){
     renderHabits();
 
 }
+
+function savePomodoroTime(){
+
+    const minutes = Number(document.getElementById("pomodoroMinutes").value);
+
+    if(minutes < 1 || minutes > 180){
+        alert("Введіть від 1 до 180 хвилин");
+        return;
+    }
+
+    pomodoroTime = minutes * 60;
+    timer = pomodoroTime;
+
+    localStorage.setItem("pomodoroTime", pomodoroTime);
+
+    drawTimer();
+
+    showToast("🍅 Час Pomodoro збережено");
+
+}
+
+
+document.getElementById("pomodoroMinutes").value = pomodoroTime / 60;
 
 renderHabits();
 renderGoals();

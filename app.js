@@ -855,8 +855,6 @@ function savePomodoroTime(){
 }
 
 
-document.getElementById("pomodoroMinutes").value = pomodoroTime / 60;
-
 renderHabits();
 renderGoals();
 updateStats();

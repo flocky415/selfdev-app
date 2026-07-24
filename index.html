@@ -224,18 +224,26 @@ onkeyup="searchGoals()">
 
 </div>
 
-<label>🍅 Тривалість (хв):</label>
+<label>🍅 Робота</label>
+
+<div class="time-control">
+<button onclick="changePomodoro(-1)">−</button>
 
 <input
-    type="number"
-    id="pomodoroMinutes"
-    min="1"
-    max="180"
-    value="25">
+type="number"
+id="pomodoroMinutes"
+min="1"
+max="180"
+value="25">
 
-<button onclick="savePomodoroTime()">
+<button onclick="changePomodoro(1)">+</button>
+</div>
+
+<button type="button" onclick="savePomodoroTime()">
 💾 Зберегти
 </button>
+
+</div>
 
 <button type="button" onclick="startTimer()">
 Старт

@@ -1,46 +1,35 @@
-const CACHE = "selfdev-v2"; // зміни v1 на v2
+const CACHE = "selfdev-v3";
 
 const FILES = [
-    "./",
-    "./index.html",
-    "./style.css",
-    "./app.js",
-    "./quotes.js",
-    "./manifest.json"
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./quotes.js",
+  "./manifest.json"
 ];
 
-self.addEventListener("install", e => {
-
-    e.waitUntil(
-
-        caches.open(CACHE)
-
-        .then(cache => cache.addAll(FILES))
-
-    );
-
-});
-
-self.addEventListener("fetch", e => {
-
-    e.respondWith(
-
-        caches.match(e.request)
-
-        .then(r => r || fetch(e.request))
-
-    );
-
+self.addEventListener("install", event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(FILES))
+  );
 });
 
 self.addEventListener("activate", event => {
-    event.waitUntil(
-        caches.keys().then(keys =>
-            Promise.all(
-                keys
-                    .filter(key => key !== CACHE)
-                    .map(key => caches.delete(key))
-            )
-        )
-    );
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE)
+          .map(key => caches.delete(key))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
 });

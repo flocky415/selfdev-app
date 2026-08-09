@@ -1,4 +1,4 @@
-const CACHE = "selfdev-v3";
+const CACHE = "selfdev-v5";
 
 const FILES = [
   "./",
@@ -6,7 +6,9 @@ const FILES = [
   "./style.css",
   "./app.js",
   "./quotes.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {

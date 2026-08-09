@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
 
 <title>SelfDev</title>
 
@@ -11,49 +11,28 @@
 
 <meta name="theme-color" content="#4F46E5">
 
+<!-- iOS PWA support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SelfDev">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+
 </head>
 
 <body>
 
-<header>
-
 <div id="toast"></div>
+
+<header>
 
 <h1>🚀 SelfDev</h1>
 
-<button type="button" id="themeBtn" onclick="toggleTheme()">
+<button type="button" id="themeBtn" onclick="toggleTheme()" aria-label="Змінити тему">
 🌙
 </button>
 
 </header>
-
-<nav>
-
-<button type="button" class="tab active" data-page="home">
-🏠
-</button>
-
-<button type="button" class="tab" data-page="habits">
-✅
-</button>
-
-<button type="button" class="tab" data-page="goals">
-🎯
-</button>
-
-<button type="button" class="tab" data-page="timer">
-⏱
-</button>
-
-<button type="button" class="tab" data-page="stats">
-📈
-</button>
-
-<button type="button" class="tab" data-page="notes">
-📖
-</button>
-
-</nav>
 
 <main>
 
@@ -85,7 +64,7 @@
 
 <div class="xpCircle">
 
-<svg width="170" height="170">
+<svg width="170" height="170" viewBox="0 0 170 170">
 
 <circle
 cx="85"
@@ -156,33 +135,13 @@ class="progressCircle"/>
 
 </div>
 
-<div class="card">
-
-<h3>🥇 Мої досягнення</h3>
-
-<ul id="achievementList">
-
-<li>🔒 Перше виконане завдання</li>
-
-<li>🔒 10 виконаних звичок</li>
-
-<li>🔒 100 XP</li>
-
-<li>🔒 500 XP</li>
-
-<li>🔒 1000 XP</li>
-
-</ul>
-
-</div>
-
 </section>
 
 <section id="habits" class="page">
 
-<h2>Звички</h2>
+<h2>✅ Звички</h2>
 
-<input id="habitInput" placeholder="Нова звичка">
+<input id="habitInput" placeholder="Нова звичка" onkeydown="if(event.key==='Enter')addHabit()">
 <input
 id="habitSearch"
 placeholder="🔍 Пошук звички"
@@ -198,9 +157,13 @@ onkeyup="searchHabits()">
 
 <section id="goals" class="page">
 
-<h2>Цілі</h2>
+<h2>🎯 Цілі</h2>
 
-<input id="goalInput" placeholder="Нова ціль">
+<input id="goalInput" placeholder="Нова ціль" onkeydown="if(event.key==='Enter')addGoal()">
+
+<label class="field-label">Дедлайн (необов'язково)</label>
+<input type="date" id="goalDeadline">
+
 <input
 id="goalSearch"
 placeholder="🔍 Пошук цілі"
@@ -216,40 +179,23 @@ onkeyup="searchGoals()">
 
 <section id="timer" class="page">
 
-<h2>Pomodoro</h2>
+<h2>🍅 Pomodoro</h2>
 
-<div id="timerText">
+<div id="timerText">25:00</div>
 
-25:00
-
-</div>
-
-<label>🍅 Робота</label>
+<label>🍅 Робота, хв</label>
 
 <div class="time-control">
-<button onclick="changePomodoro(-1)">−</button>
+<button type="button" onclick="changePomodoro(-1)" aria-label="Менше">−</button>
 
-<input
-type="number"
-id="pomodoroMinutes"
-min="1"
-max="180"
-value="25">
+<input type="number" id="pomodoroMinutes" min="1" max="180" value="25">
 
-<button onclick="changePomodoro(1)">+</button>
+<button type="button" onclick="changePomodoro(1)" aria-label="Більше">+</button>
 </div>
 
-<button type="button" onclick="savePomodoroTime()">
-💾 Зберегти
-</button>
-
-<button type="button" onclick="startTimer()">
-Старт
-</button>
-
-<button type="button" onclick="resetTimer()">
-Скинути
-</button>
+<button type="button" onclick="savePomodoroTime()">💾 Зберегти</button>
+<button type="button" id="timerToggleBtn" onclick="toggleTimer()">▶️ Старт</button>
+<button type="button" onclick="resetTimer()">🔄 Скинути</button>
 
 </section>
 
@@ -281,13 +227,21 @@ value="25">
 
 </div>
 
+<div class="card">
+
+<h3>📉 Динаміка за 14 днів</h3>
+
+<canvas id="historyChart" height="180"></canvas>
+
+</div>
+
 </section>
 
 <section id="notes" class="page">
 
-<h2>Щоденник</h2>
+<h2>📝 Щоденник</h2>
 
-<textarea id="note"></textarea>
+<textarea id="note" placeholder="Що на думці сьогодні?"></textarea>
 
 <button type="button" onclick="saveNote()">
 Зберегти
@@ -304,6 +258,7 @@ value="25">
 <input
 type="file"
 id="importFile"
+accept="application/json"
 style="display:none"
 onchange="importData(event)">
 
@@ -311,9 +266,139 @@ onchange="importData(event)">
 Імпортувати
 </button>
 
+<div class="card sync-card">
+
+<h3>☁️ Хмарна синхронізація</h3>
+
+<p class="hint-text">
+Дані зберігаються лише на цьому телефоні. Щоб бачити їх і на іншому пристрої — підключіть безкоштовну базу Firebase (5 хв, інструкція нижче) і використовуйте один код на всіх пристроях.
+</p>
+
+<button type="button" class="more-item" onclick="toggleSyncSetup()">
+⚙️ Налаштувати Firebase
+</button>
+
+<div id="syncSetup" style="display:none">
+
+<textarea id="cloudConfigInput" class="sync-textarea" placeholder='Вставте Firebase config, напр.: {"apiKey":"...","authDomain":"...","projectId":"..."}'></textarea>
+
+<div class="sync-code-row">
+<input id="syncCode" placeholder="Код синхронізації">
+<button type="button" onclick="generateSyncCode()" aria-label="Згенерувати код">🎲</button>
+</div>
+
+<button type="button" onclick="connectCloud()">
+🔌 Підключити
+</button>
+
+<label class="checkbox-row">
+<input type="checkbox" id="autoSyncCheckbox" onchange="toggleAutoSync()">
+Автоматично зберігати зміни в хмару
+</label>
+
+</div>
+
+<div class="sync-actions">
+<button type="button" onclick="pushToCloud(false)">⬆️ В хмару</button>
+<button type="button" onclick="pullFromCloud()">⬇️ З хмари</button>
+</div>
+
+<p id="syncStatus" class="sync-status">Не підключено</p>
+
+</div>
+
+</section>
+
+<section id="achievements" class="page">
+
+<h2>🏆 Досягнення</h2>
+
+<div class="card">
+
+<h3>📈 Продуктивність</h3>
+
+<div class="chart-box">
+
+<canvas
+id="achievementChart"
+height="200">
+</canvas>
+
+</div>
+
+</div>
+
+<ul id="achievementList">
+
+<li>🔒 Перше виконане завдання</li>
+
+<li>🔒 10 виконаних звичок</li>
+
+<li>🔒 100 XP</li>
+
+<li>🔒 500 XP</li>
+
+<li>🔒 1000 XP</li>
+
+</ul>
+
 </section>
 
 </main>
+
+<nav>
+
+<button type="button" class="tab active" data-page="home" aria-label="Головна">
+🏠
+</button>
+
+<button type="button" class="tab" data-page="habits" aria-label="Звички">
+✅
+</button>
+
+<button type="button" class="tab" data-page="goals" aria-label="Цілі">
+🎯
+</button>
+
+<button type="button" id="moreBtn" aria-label="Більше">
+☰
+<br>
+Ще
+</button>
+
+</nav>
+
+<div id="moreMenu" class="more-menu">
+
+    <div class="more-content">
+
+        <h3>Меню</h3>
+
+        <button class="more-item" onclick="openPage('timer')">
+            🍅 Pomodoro
+        </button>
+
+        <button class="more-item" onclick="openPage('notes')">
+            📝 Нотатки
+        </button>
+
+        <button class="more-item" onclick="openPage('stats')">
+            📈 Статистика
+        </button>
+
+        <button class="more-item" onclick="openPage('achievements')">
+            🏆 Досягнення
+        </button>
+
+        <button class="more-item close" onclick="closeMoreMenu()">
+            ❌ Закрити
+        </button>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script src="quotes.js"></script>
 <script src="app.js"></script>

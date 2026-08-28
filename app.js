@@ -299,6 +299,35 @@ li.innerText
 
 }
 
+function searchGoals(){
+
+const value=document
+.getElementById("goalSearch")
+.value
+.toLowerCase();
+
+document
+.querySelectorAll("#goalList li")
+.forEach(li=>{
+
+li.style.display=
+
+li.innerText
+.toLowerCase()
+.includes(value)
+
+?
+
+"flex"
+
+:
+
+"none";
+
+});
+
+}
+
 function addHabit(){
 
 const input=document.getElementById("habitInput");
@@ -1001,6 +1030,10 @@ function openPage(page){
         tab.classList.add("active");
     }
 
+    if(page === "achievements"){
+        drawAchievementChart();
+    }
+
 }
 
 function updateHistory(){
@@ -1036,7 +1069,11 @@ function updateHistory(){
 
     save();
 
+    drawAchievementChart();
+
 }
+
+let achievementChartInstance = null;
 
 function drawAchievementChart(){
 
@@ -1046,32 +1083,93 @@ function drawAchievementChart(){
 
     const ctx = canvas.getContext("2d");
 
-    const w = canvas.width;
-    const h = canvas.height;
+    if(typeof Chart === "undefined"){
 
-    ctx.clearRect(0,0,w,h);
+        // Бібліотека Chart.js не завантажилась (немає інтернету) — покажемо заглушку
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#64748b";
+        ctx.font = "14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Графік недоступний офлайн", canvas.width / 2, canvas.height / 2);
 
-    // фон
-    ctx.fillStyle="#111827";
-    ctx.fillRect(0,0,w,h);
-
-    // сітка
-
-    ctx.strokeStyle="#2d3748";
-
-    for(let i=0;i<=5;i++){
-
-        const y = 20 + i*40;
-
-        ctx.beginPath();
-
-        ctx.moveTo(0,y);
-
-        ctx.lineTo(w,y);
-
-        ctx.stroke();
+        return;
 
     }
+
+    const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+
+    const last = sorted.slice(-14);
+
+    if(achievementChartInstance){
+        achievementChartInstance.destroy();
+        achievementChartInstance = null;
+    }
+
+    if(last.length === 0){
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#64748b";
+        ctx.font = "14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Ще немає даних — виконай першу звичку чи ціль", canvas.width / 2, canvas.height / 2);
+
+        return;
+
+    }
+
+    const labels = last.map(d => {
+        const dt = new Date(d.date);
+        return dt.toLocaleDateString("uk-UA", { day: "numeric", month: "short" });
+    });
+
+    const data = last.map(d => d.percent);
+
+    achievementChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Виконано за день (%)",
+                data: data,
+                borderColor: "#6366f1",
+                backgroundColor: "rgba(99,102,241,0.2)",
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: "#8b5cf6",
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (item) => item.parsed.y + "%"
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        color: "#94a3b8",
+                        callback: v => v + "%"
+                    },
+                    grid: { color: "#2d3748" }
+                },
+                x: {
+                    ticks: { color: "#94a3b8" },
+                    grid: { color: "#2d3748" }
+                }
+            }
+        }
+    });
 
 }
 

@@ -1,0 +1,69 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "auto",
+          "items": [
+            {
+              "type": "Image",
+              "url": "./icon-192.png",
+              "size": "Small",
+              "style": "RoundedCorners"
+            }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "stretch",
+          "verticalContentAlignment": "Center",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "SelfDev",
+              "weight": "Bolder",
+              "size": "Medium",
+              "color": "Light"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "📖 ${quoteText}",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Medium",
+      "size": "Small",
+      "maxLines": 4
+    },
+    {
+      "type": "Container",
+      "spacing": "Medium",
+      "style": "emphasis",
+      "bleed": true,
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${goalsSummary}",
+          "wrap": true,
+          "weight": "Bolder",
+          "size": "Small"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "title": "Відкрити SelfDev",
+      "verb": "openApp"
+    }
+  ]
+}

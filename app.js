@@ -17,8 +17,6 @@ goals.forEach(goal => {
     if (goal.pinned === undefined) goal.pinned = false;
     if (!goal.created) goal.created = new Date().toLocaleString();
     if (!goal.updated) goal.updated = goal.created;
-    if (!goal.createdAt) goal.createdAt = Date.now();
-    if (goal.deadline === undefined) goal.deadline = null;
 });
 
 habits.forEach(habit => {
@@ -34,13 +32,6 @@ let xp = Number(localStorage.getItem("xp")) || 0;
 let level = Number(localStorage.getItem("level")) || 1;
 let theme =
 localStorage.getItem("theme") || "dark";
-
-// ---- Хмарна синхронізація ----
-let cloudConfig = JSON.parse(localStorage.getItem("cloudConfig") || "null");
-let syncCode = localStorage.getItem("syncCode") || "";
-let autoSync = localStorage.getItem("autoSync") === "1";
-let cloudDb = null;
-let syncDebounce = null;
 
 const tabs = document.querySelectorAll(".tab");
 const pages = document.querySelectorAll(".page");
@@ -60,18 +51,9 @@ tabs.forEach(tab => {
             page.classList.add("active");
         }
 
-        redrawChartsFor(tab.dataset.page);
-
     };
 
 });
-
-function redrawChartsFor(page){
-
-    if(page==="achievements") drawAchievementChart();
-    if(page==="stats") drawHistoryStatsChart();
-
-}
 
 function save(){
 
@@ -84,14 +66,6 @@ localStorage.setItem("level",level);
 
 localStorage.setItem("streak",streak);
 localStorage.setItem("lastOpen",lastOpen);
-
-if(autoSync && cloudConfig && syncCode){
-
-clearTimeout(syncDebounce);
-
-syncDebounce = setTimeout(()=>pushToCloud(true), 1500);
-
-}
 
 }
 
@@ -231,104 +205,6 @@ list[4].classList.add("unlocked");
 
 }
 
-const SWIPE_THRESHOLD = 90;
-const SWIPE_MAX = 140;
-
-function attachSwipe(li, onSwipeRight, onSwipeLeft){
-
-const content = li.querySelector(".swipe-content");
-
-if(!content) return;
-
-let startX = 0, startY = 0, dx = 0;
-let dragging = false, decided = false, horizontal = false;
-
-content.addEventListener("touchstart", (e)=>{
-
-const t = e.touches[0];
-
-startX = t.clientX;
-startY = t.clientY;
-dx = 0;
-dragging = true;
-decided = false;
-horizontal = false;
-
-content.style.transition = "none";
-
-}, {passive:true});
-
-content.addEventListener("touchmove", (e)=>{
-
-if(!dragging) return;
-
-const t = e.touches[0];
-
-const moveX = t.clientX - startX;
-const moveY = t.clientY - startY;
-
-if(!decided){
-
-if(Math.abs(moveX) > 10 || Math.abs(moveY) > 10){
-
-decided = true;
-horizontal = Math.abs(moveX) > Math.abs(moveY);
-
-}
-
-}
-
-if(decided && horizontal){
-
-e.preventDefault();
-
-dx = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, moveX));
-
-content.style.transform = `translateX(${dx}px)`;
-
-}
-
-}, {passive:false});
-
-content.addEventListener("touchend", ()=>{
-
-if(!dragging) return;
-
-dragging = false;
-
-content.style.transition = "transform .25s ease";
-
-if(dx > SWIPE_THRESHOLD){
-
-content.style.transform = `translateX(${SWIPE_MAX}px)`;
-setTimeout(onSwipeRight, 130);
-
-}else if(dx < -SWIPE_THRESHOLD){
-
-content.style.transform = `translateX(${-SWIPE_MAX}px)`;
-setTimeout(onSwipeLeft, 130);
-
-}else{
-
-content.style.transform = "translateX(0)";
-
-}
-
-dx = 0;
-
-});
-
-content.addEventListener("touchcancel", ()=>{
-
-dragging = false;
-content.style.transition = "transform .25s ease";
-content.style.transform = "translateX(0)";
-dx = 0;
-
-});
-
-}
-
 function renderHabits(){
 
 const list=document.getElementById("habitList");
@@ -340,18 +216,10 @@ habits.forEach((habit,index)=>{
 
 const li=document.createElement("li");
 
-li.classList.add("swipe-item");
-
 if(habit.done)
 li.classList.add("done");
 
 li.innerHTML=`
-
-<div class="swipe-bg swipe-bg-done">✔ Виконано</div>
-
-<div class="swipe-bg swipe-bg-delete">🗑 Видалити</div>
-
-<div class="swipe-content">
 
 <div>
 
@@ -371,25 +239,29 @@ ${habit.pinned ? "📌" : "📍"}
 
 </button>
 
+<button onclick="toggleHabit(${index})">
+
+${habit.done ? "↩" : "✔"}
+
+</button>
+
 <button onclick="editHabit(${index})">
 
 ✏️
 
 </button>
 
-</div>
+<button onclick="deleteHabit(${index})">
+
+🗑
+
+</button>
 
 </div>
 
 `;
 
 list.appendChild(li);
-
-});
-
-list.querySelectorAll("li").forEach((li,index)=>{
-
-attachSwipe(li, ()=>toggleHabit(index), ()=>deleteHabit(index));
 
 });
 
@@ -407,35 +279,6 @@ const value=document
 
 document
 .querySelectorAll("#habitList li")
-.forEach(li=>{
-
-li.style.display=
-
-li.innerText
-.toLowerCase()
-.includes(value)
-
-?
-
-"flex"
-
-:
-
-"none";
-
-});
-
-}
-
-function searchGoals(){
-
-const value=document
-.getElementById("goalSearch")
-.value
-.toLowerCase();
-
-document
-.querySelectorAll("#goalList li")
 .forEach(li=>{
 
 li.style.display=
@@ -512,15 +355,9 @@ updateDayProgress();
 
 }
 
-function deleteHabit(index){
+async function deleteHabit(index){
 
-if(!confirm("Видалити звичку?")){
-
-renderHabits();
-
-return;
-
-}
+if(!(await customConfirm("Видалити звичку?"))) return;
 
 habits.splice(index,1);
 
@@ -531,9 +368,9 @@ updateDayProgress();
 
 }
 
-function editHabit(index){
+async function editHabit(index){
 
-const text=prompt(
+const text = await customPrompt(
 
 "Редагувати звичку",
 
@@ -565,26 +402,16 @@ goals.forEach(goal => {
     if (goal.pinned === undefined) goal.pinned = false;
     if (!goal.created) goal.created = new Date().toLocaleString();
     if (!goal.updated) goal.updated = goal.created;
-    if (!goal.createdAt) goal.createdAt = Date.now();
-    if (goal.deadline === undefined) goal.deadline = null;
 });
 goals.sort((a, b) => Number(b.pinned) - Number(a.pinned));
 goals.forEach((goal,index)=>{
 
 const li=document.createElement("li");
 
-li.classList.add("swipe-item");
-
 if(goal.done)
 li.classList.add("done");
 
 li.innerHTML=`
-
-<div class="swipe-bg swipe-bg-done">✔ Виконано</div>
-
-<div class="swipe-bg swipe-bg-delete">🗑 Видалити</div>
-
-<div class="swipe-content">
 
 <div>
 
@@ -593,8 +420,6 @@ li.innerHTML=`
 <small>📅 ${goal.created}</small><br>
 
 <small>✏️ ${goal.updated}</small>
-
-${deadlineMarkup(goal)}
 
 </div>
 
@@ -606,13 +431,23 @@ ${goal.pinned ? "📌" : "📍"}
 
 </button>
 
+<button onclick="toggleGoal(${index})">
+
+${goal.done ? "↩" : "✔"}
+
+</button>
+
 <button onclick="editGoal(${index})">
 
 ✏️
 
 </button>
 
-</div>
+<button onclick="deleteGoal(${index})">
+
+🗑
+
+</button>
 
 </div>
 
@@ -622,59 +457,11 @@ list.appendChild(li);
 
 });
 
-list.querySelectorAll("li").forEach((li,index)=>{
-
-attachSwipe(li, ()=>toggleGoal(index), ()=>deleteGoal(index));
-
-});
-
-}
-
-function deadlineMarkup(goal){
-
-if(!goal.deadline) return "";
-
-const deadlineTs = new Date(goal.deadline).getTime();
-
-if(isNaN(deadlineTs)) return "";
-
-const createdTs = goal.createdAt || deadlineTs;
-const now = Date.now();
-
-const totalSpan = deadlineTs - createdTs;
-const elapsed = now - createdTs;
-
-let percent = totalSpan > 0 ? Math.round(elapsed / totalSpan * 100) : 100;
-percent = Math.max(0, Math.min(100, percent));
-
-const daysLeft = Math.ceil((deadlineTs - now) / 86400000);
-const overdue = daysLeft < 0 && !goal.done;
-
-let label;
-
-if(goal.done){
-    label = "✅ Завершено";
-}else if(overdue){
-    label = `⛔ Прострочено на ${Math.abs(daysLeft)} дн.`;
-}else if(daysLeft===0){
-    label = "⏰ Дедлайн сьогодні";
-}else{
-    label = `⏳ Залишилось ${daysLeft} дн.`;
-}
-
-return `
-<div class="goal-deadline">
-<div class="deadline-bar"><div class="deadline-fill ${overdue ? "overdue" : ""}" style="width:${percent}%"></div></div>
-<small>${label}</small>
-</div>
-`;
-
 }
 
 function addGoal(){
 
 const input=document.getElementById("goalInput");
-const deadlineInput=document.getElementById("goalDeadline");
 
 if(input.value.trim()=="") return;
 
@@ -691,13 +478,10 @@ goals.push({
     done: false,
     pinned: false,
     created: new Date().toLocaleString(),
-    updated: new Date().toLocaleString(),
-    createdAt: Date.now(),
-    deadline: deadlineInput && deadlineInput.value ? deadlineInput.value : null
+    updated: new Date().toLocaleString()
 });
 
 input.value="";
-if(deadlineInput) deadlineInput.value="";
 
 save();
 
@@ -733,15 +517,9 @@ updateDayProgress();
 
 }
 
-function deleteGoal(index){
+async function deleteGoal(index){
 
-if(!confirm("Видалити ціль?")){
-
-renderGoals();
-
-return;
-
-}
+if(!(await customConfirm("Видалити ціль?"))) return;
 
 goals.splice(index,1);
 
@@ -753,9 +531,9 @@ updateDayProgress();
 
 }
 
-function editGoal(index){
+async function editGoal(index){
 
-const text=prompt(
+const text = await customPrompt(
 
 "Редагувати ціль",
 
@@ -768,21 +546,6 @@ if(text===null) return;
 if(text.trim()=="") return;
 
 goals[index].name=text;
-
-const deadlineText=prompt(
-
-"Дедлайн (РРРР-ММ-ДД), залиште порожнім щоб прибрати",
-
-goals[index].deadline || ""
-
-);
-
-if(deadlineText!==null){
-
-goals[index].deadline = deadlineText.trim() || null;
-
-}
-
 goals[index].updated = new Date().toLocaleString();
 
 save();
@@ -835,6 +598,8 @@ text.innerText=percent+"% виконано";
 
 }
 
+syncWidgetData();
+
 }
 
 function updateStreak(){
@@ -882,15 +647,11 @@ clearInterval(interval);
 
 interval=null;
 
-setTimerBtnState();
-
 xp+=20;
 
 updateLevel();
 
-showToast("🎉 Pomodoro завершено! +20 XP");
-
-if(navigator.vibrate) navigator.vibrate([200,100,200]);
+customAlert("🎉 Pomodoro завершено!");
 
 timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
 
@@ -899,42 +660,6 @@ drawTimer();
 }
 
 },1000);
-
-setTimerBtnState();
-
-}
-
-function pauseTimer(){
-
-clearInterval(interval);
-
-interval=null;
-
-setTimerBtnState();
-
-}
-
-function toggleTimer(){
-
-if(interval){
-
-pauseTimer();
-
-}else{
-
-startTimer();
-
-}
-
-}
-
-function setTimerBtnState(){
-
-const btn=document.getElementById("timerToggleBtn");
-
-if(!btn) return;
-
-btn.innerText = interval ? "⏸ Пауза" : "▶️ Старт";
 
 }
 
@@ -947,8 +672,6 @@ interval=null;
 timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
 
 drawTimer();
-
-setTimerBtnState();
 
 }
 
@@ -986,38 +709,15 @@ note.value = localStorage.getItem("note") || "";
 
 }
 
-function showDailyQuote(retryCount){
+function showDailyQuote(){
 
-retryCount = retryCount || 0;
+const days =
+Math.floor(Date.now()/86400000);
+
+const quote =
+quotes[days % quotes.length];
 
 const q=document.getElementById("quoteText");
-const cat=document.getElementById("quoteCategory");
-
-if(!q || !cat) return;
-
-// quotes.js could still be loading (slow network, CDN hiccup) — retry a few times
-if(typeof quotes === "undefined" || !Array.isArray(quotes) || quotes.length === 0){
-
-if(retryCount < 10){
-
-setTimeout(()=>showDailyQuote(retryCount+1), 300);
-
-}else{
-
-console.warn("quotes.js не завантажився — картка \"Думка дня\" залишиться порожньою");
-
-q.innerText = "Не вдалося завантажити цитату дня 🙁";
-cat.innerText = "";
-
-}
-
-return;
-
-}
-
-const days = Math.floor(Date.now()/86400000);
-
-const quote = quotes[days % quotes.length];
 
 q.style.opacity=0;
 
@@ -1029,7 +729,8 @@ q.style.opacity=1;
 
 },250);
 
-cat.innerText = quote.category;
+document.getElementById("quoteCategory").innerText =
+quote.category;
 
 }
 
@@ -1151,7 +852,7 @@ function savePomodoroTime(){
     const minutes = Number(document.getElementById("pomodoroMinutes").value);
 
     if(minutes < 1 || minutes > 180){
-        alert("Введіть від 1 до 180 хвилин");
+        customAlert("Введіть від 1 до 180 хвилин");
         return;
     }
 
@@ -1195,15 +896,91 @@ function closeMoreMenu() {
 
 document.getElementById("moreBtn").onclick = openMoreMenu;
 
-document.getElementById("moreMenu").addEventListener("click", (e)=>{
+// ----------------
+// Власне модальне вікно замість confirm()/prompt()/alert()
+// (у встановлених PWA нативні діалоги браузера часто блокуються або
+// миттєво повертають "скасовано", тому видалення/редагування не спрацьовувало)
+// ----------------
 
-    if(e.target.id==="moreMenu"){
+function showModal({message, showInput = false, inputValue = "", showCancel = true, okText = "OK", cancelText = "Скасувати"}){
 
-        closeMoreMenu();
+    return new Promise(resolve => {
 
-    }
+        const overlay = document.getElementById("customModal");
+        const msgEl = document.getElementById("modalMessage");
+        const inputEl = document.getElementById("modalInput");
+        const okBtn = document.getElementById("modalOkBtn");
+        const cancelBtn = document.getElementById("modalCancelBtn");
 
-});
+        msgEl.innerText = message;
+
+        if(showInput){
+            inputEl.style.display = "block";
+            inputEl.value = inputValue;
+        }else{
+            inputEl.style.display = "none";
+        }
+
+        cancelBtn.style.display = showCancel ? "inline-block" : "none";
+
+        okBtn.innerText = okText;
+        cancelBtn.innerText = cancelText;
+
+        overlay.classList.add("show");
+
+        function cleanup(){
+            overlay.classList.remove("show");
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            overlay.onclick = null;
+        }
+
+        okBtn.onclick = () => {
+            const value = showInput ? inputEl.value : true;
+            cleanup();
+            resolve(value);
+        };
+
+        cancelBtn.onclick = () => {
+            cleanup();
+            resolve(showInput ? null : false);
+        };
+
+        overlay.onclick = (e) => {
+            if(e.target === overlay){
+                cleanup();
+                resolve(showInput ? null : false);
+            }
+        };
+
+        if(showInput){
+
+            setTimeout(() => {
+                inputEl.focus();
+                inputEl.select();
+            }, 50);
+
+            inputEl.onkeydown = (e) => {
+                if(e.key === "Enter") okBtn.onclick();
+            };
+
+        }
+
+    });
+
+}
+
+function customConfirm(message){
+    return showModal({ message, showInput: false });
+}
+
+function customPrompt(message, defaultValue = ""){
+    return showModal({ message, showInput: true, inputValue: defaultValue });
+}
+
+function customAlert(message){
+    return showModal({ message, showInput: false, showCancel: false, okText: "Гаразд" });
+}
 
 function openPage(page){
 
@@ -1223,8 +1000,6 @@ function openPage(page){
     if(tab){
         tab.classList.add("active");
     }
-
-    redrawChartsFor(page);
 
 }
 
@@ -1263,402 +1038,54 @@ function updateHistory(){
 
 }
 
-let achievementChartInstance = null;
-let historyChartInstance = null;
-
-function last14Days(){
-
-    const days = [];
-
-    for(let i=13;i>=0;i--){
-
-        const d = new Date(Date.now() - i*86400000);
-        const iso = d.toISOString().slice(0,10);
-
-        const entry = history.find(h=>h.date===iso);
-
-        days.push({
-
-            label: d.toLocaleDateString("uk-UA",{day:"numeric",month:"short"}),
-            percent: entry ? entry.percent : 0
-
-        });
-
-    }
-
-    return days;
-
-}
-
-function drawHistoryChart(canvasId){
-
-    const canvas = document.getElementById(canvasId);
-
-    if(!canvas || typeof Chart==="undefined") return null;
-
-    const days = last14Days();
-
-    return new Chart(canvas, {
-
-        type: "line",
-
-        data: {
-
-            labels: days.map(d=>d.label),
-
-            datasets: [{
-
-                label: "% виконано за день",
-                data: days.map(d=>d.percent),
-                borderColor: "#6366f1",
-                backgroundColor: "rgba(99,102,241,.25)",
-                tension: .35,
-                fill: true,
-                pointRadius: 3,
-                pointBackgroundColor: "#8b5cf6"
-
-            }]
-
-        },
-
-        options: {
-
-            responsive: true,
-
-            plugins: {
-
-                legend: { display: false }
-
-            },
-
-            scales: {
-
-                y: {
-
-                    min: 0,
-                    max: 100,
-                    ticks: { color: "#94a3b8" },
-                    grid: { color: "rgba(148,163,184,.15)" }
-
-                },
-
-                x: {
-
-                    ticks: { color: "#94a3b8", maxRotation: 0, autoSkip: true },
-                    grid: { display: false }
-
-                }
-
-            }
-
-        }
-
-    });
-
-}
-
 function drawAchievementChart(){
 
-    if(achievementChartInstance){
+    const canvas = document.getElementById("achievementChart");
 
-        achievementChartInstance.destroy();
+    if(!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0,0,w,h);
+
+    // фон
+    ctx.fillStyle="#111827";
+    ctx.fillRect(0,0,w,h);
+
+    // сітка
+
+    ctx.strokeStyle="#2d3748";
+
+    for(let i=0;i<=5;i++){
+
+        const y = 20 + i*40;
+
+        ctx.beginPath();
+
+        ctx.moveTo(0,y);
+
+        ctx.lineTo(w,y);
+
+        ctx.stroke();
 
     }
-
-    achievementChartInstance = drawHistoryChart("achievementChart");
-
-}
-
-function drawHistoryStatsChart(){
-
-    if(historyChartInstance){
-
-        historyChartInstance.destroy();
-
-    }
-
-    historyChartInstance = drawHistoryChart("historyChart");
-
-}
-
-// ---- Хмарна синхронізація: функції ----
-
-function loadScript(src){
-
-return new Promise((resolve, reject)=>{
-
-const s = document.createElement("script");
-
-s.src = src;
-s.onload = resolve;
-s.onerror = reject;
-
-document.head.appendChild(s);
-
-});
-
-}
-
-async function initFirebase(){
-
-if(cloudDb) return cloudDb;
-
-if(!cloudConfig) return null;
-
-if(!window.firebase){
-
-await loadScript("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
-await loadScript("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js");
-
-}
-
-if(!firebase.apps.length){
-
-firebase.initializeApp(cloudConfig);
-
-}
-
-cloudDb = firebase.firestore();
-
-return cloudDb;
-
-}
-
-function toggleSyncSetup(){
-
-const el = document.getElementById("syncSetup");
-
-if(el) el.style.display = el.style.display === "none" ? "block" : "none";
-
-}
-
-function generateSyncCode(){
-
-const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-
-const el = document.getElementById("syncCode");
-
-if(el) el.value = code;
-
-}
-
-function updateSyncStatus(text){
-
-const el = document.getElementById("syncStatus");
-
-if(el) el.innerText = text;
-
-}
-
-async function connectCloud(){
-
-const configText = document.getElementById("cloudConfigInput").value.trim();
-const code = document.getElementById("syncCode").value.trim();
-
-if(!configText || !code){
-
-showToast("Вкажіть конфігурацію Firebase і код синхронізації");
-
-return;
-
-}
-
-try{
-
-cloudConfig = JSON.parse(configText);
-
-}catch(e){
-
-showToast("⚠️ Невірний формат конфігурації Firebase");
-
-return;
-
-}
-
-syncCode = code;
-cloudDb = null;
-
-localStorage.setItem("cloudConfig", JSON.stringify(cloudConfig));
-localStorage.setItem("syncCode", syncCode);
-
-updateSyncStatus("Підключення...");
-
-try{
-
-await initFirebase();
-
-showToast("☁️ Підключено");
-
-updateSyncStatus("Підключено. Код: " + syncCode);
-
-}catch(e){
-
-console.error(e);
-
-showToast("⚠️ Не вдалося підключитись");
-
-updateSyncStatus("Помилка підключення");
-
-}
-
-}
-
-async function pushToCloud(silent){
-
-if(!cloudConfig || !syncCode){
-
-if(!silent) showToast("Спочатку підключіть хмару");
-
-return;
-
-}
-
-try{
-
-const db = await initFirebase();
-
-await db.collection("selfdev_sync").doc(syncCode).set({
-
-habits,
-goals,
-xp,
-level,
-streak,
-note: localStorage.getItem("note") || "",
-updatedAt: Date.now()
-
-});
-
-if(!silent) showToast("⬆️ Дані збережено в хмару");
-
-updateSyncStatus("Синхронізовано: " + new Date().toLocaleTimeString());
-
-}catch(e){
-
-console.error(e);
-
-if(!silent) showToast("⚠️ Помилка синхронізації");
-
-updateSyncStatus("Помилка синхронізації");
-
-}
-
-}
-
-async function pullFromCloud(){
-
-if(!cloudConfig || !syncCode){
-
-showToast("Спочатку підключіть хмару");
-
-return;
-
-}
-
-if(!confirm("Замінити дані на цьому пристрої даними з хмари?")) return;
-
-try{
-
-const db = await initFirebase();
-
-const doc = await db.collection("selfdev_sync").doc(syncCode).get();
-
-if(!doc.exists){
-
-showToast("Немає даних у хмарі для цього коду");
-
-return;
-
-}
-
-const data = doc.data();
-
-habits = data.habits || [];
-goals = data.goals || [];
-xp = data.xp || 0;
-level = data.level || 1;
-streak = data.streak || 0;
-
-localStorage.setItem("note", data.note || "");
-
-save();
-
-showToast("⬇️ Дані завантажено з хмари");
-
-location.reload();
-
-}catch(e){
-
-console.error(e);
-
-showToast("⚠️ Помилка завантаження");
-
-updateSyncStatus("Помилка завантаження");
-
-}
-
-}
-
-function toggleAutoSync(){
-
-autoSync = document.getElementById("autoSyncCheckbox").checked;
-
-localStorage.setItem("autoSync", autoSync ? "1" : "0");
-
-if(autoSync){
-
-showToast("☁️ Автосинхронізація увімкнена");
-
-}
-
-}
-
-function initSyncUI(){
-
-const cfgEl = document.getElementById("cloudConfigInput");
-const codeEl = document.getElementById("syncCode");
-const autoEl = document.getElementById("autoSyncCheckbox");
-
-if(cfgEl && cloudConfig) cfgEl.value = JSON.stringify(cloudConfig);
-if(codeEl && syncCode) codeEl.value = syncCode;
-if(autoEl) autoEl.checked = autoSync;
-
-if(cloudConfig && syncCode){
-
-updateSyncStatus("Підключено. Код: " + syncCode);
-
-}
 
 }
 
 window.addEventListener("load", () => {
 
-    const steps = [
-        renderHabits,
-        renderGoals,
-        updateStats,
-        updateDayProgress,
-        showDailyQuote,
-        updateStreak,
-        updateAchievements,
-        checkAchievements,
-        setTimerBtnState,
-        initSyncUI
-    ];
-
-    steps.forEach(fn => {
-
-        try{
-
-            fn();
-
-        }catch(e){
-
-            console.error("Помилка ініціалізації ("+fn.name+"):", e);
-
-        }
-
-    });
+    renderHabits();
+    renderGoals();
+    updateStats();
+    updateDayProgress();
+    showDailyQuote();
+    updateStreak();
+    updateAchievements();
+    checkAchievements();
+    drawAchievementChart();
 
 });
 
@@ -1667,3 +1094,348 @@ if("serviceWorker" in navigator){
 navigator.serviceWorker.register("sw.js");
 
 }
+
+// ----------------
+// Встановлення застосунку (Android / Desktop Chrome, Edge)
+// ----------------
+
+let deferredInstallPrompt = null;
+
+function isStandalone(){
+
+    return window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+
+    event.preventDefault();
+
+    deferredInstallPrompt = event;
+
+    const btn = document.getElementById("installBtn");
+
+    if(btn && !isStandalone()){
+        btn.style.display = "inline-block";
+    }
+
+});
+
+function installApp(){
+
+    const btn = document.getElementById("installBtn");
+
+    if(!deferredInstallPrompt){
+        showToast("Застосунок вже встановлено або недоступно тут");
+        return;
+    }
+
+    deferredInstallPrompt.prompt();
+
+    deferredInstallPrompt.userChoice.then(choice => {
+
+        if(choice.outcome === "accepted"){
+            showToast("✅ SelfDev встановлено");
+        }
+
+        deferredInstallPrompt = null;
+
+        if(btn) btn.style.display = "none";
+
+    });
+
+}
+
+window.addEventListener("appinstalled", () => {
+
+    const btn = document.getElementById("installBtn");
+
+    if(btn) btn.style.display = "none";
+
+    showToast("✅ SelfDev встановлено на пристрій");
+
+});
+
+// ----------------
+// Підказка для iOS (Safari не підтримує beforeinstallprompt)
+// ----------------
+
+function checkIosInstallHint(){
+
+    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+
+    const hint = document.getElementById("iosInstallHint");
+
+    if(hint && isIos && !isStandalone()){
+        hint.style.display = "block";
+    }
+
+}
+
+// ----------------
+// Відкриття сторінки за посиланням-ярликом (наприклад ?page=habits)
+// ----------------
+
+function openPageFromQuery(){
+
+    const params = new URLSearchParams(window.location.search);
+
+    const page = params.get("page");
+
+    if(page && document.getElementById(page)){
+        openPage(page);
+    }
+
+}
+
+window.addEventListener("load", () => {
+
+    checkIosInstallHint();
+    openPageFromQuery();
+
+});
+
+// ----------------
+// Сповіщення-нагадування (Думка дня + цілі на сьогодні)
+// ----------------
+
+const NOTIF_KEY = "notifEnabled";
+const NOTIF_LAST_SHOWN_KEY = "notifLastShown";
+
+function notificationsEnabled(){
+
+    return localStorage.getItem(NOTIF_KEY) === "1";
+
+}
+
+function updateNotifButton(){
+
+    const btn = document.getElementById("notifBtn");
+
+    if(!btn) return;
+
+    if(!("Notification" in window)){
+        btn.style.display = "none";
+        return;
+    }
+
+    if(Notification.permission === "denied"){
+        btn.innerText = "🔕 Сповіщення заблоковано в браузері";
+        btn.disabled = true;
+        return;
+    }
+
+    btn.innerText = notificationsEnabled()
+        ? "🔔 Нагадування увімкнено (вимкнути)"
+        : "🔕 Увімкнути нагадування";
+
+}
+
+async function toggleNotifications(){
+
+    if(!("Notification" in window)){
+        showToast("Сповіщення не підтримуються цим браузером");
+        return;
+    }
+
+    if(notificationsEnabled()){
+
+        localStorage.setItem(NOTIF_KEY,"0");
+        updateNotifButton();
+        showToast("🔕 Нагадування вимкнено");
+        return;
+
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if(permission !== "granted"){
+
+        showToast("Дозвіл на сповіщення не надано");
+        updateNotifButton();
+        return;
+
+    }
+
+    localStorage.setItem(NOTIF_KEY,"1");
+
+    updateNotifButton();
+
+    showToast("🔔 Нагадування увімкнено");
+
+    tryRegisterPeriodicSync();
+
+    maybeShowDailyReminder();
+
+}
+
+function buildReminderText(){
+
+    const days = Math.floor(Date.now()/86400000);
+
+    const quote = quotes[days % quotes.length];
+
+    const openGoals = goals.filter(g=>!g.done).length;
+
+    let body = quote.text;
+
+    if(openGoals > 0){
+        body += `\n🎯 Сьогодні ще не виконано цілей: ${openGoals}`;
+    }else if(goals.length > 0){
+        body += `\n✅ Усі цілі на сьогодні виконано!`;
+    }
+
+    return body;
+
+}
+
+async function maybeShowDailyReminder(){
+
+    if(!notificationsEnabled()) return;
+
+    if(!("Notification" in window) || Notification.permission !== "granted") return;
+
+    const today = new Date().toLocaleDateString();
+
+    if(localStorage.getItem(NOTIF_LAST_SHOWN_KEY) === today) return;
+
+    const body = buildReminderText();
+
+    try{
+
+        if("serviceWorker" in navigator){
+
+            const reg = await navigator.serviceWorker.ready;
+
+            await reg.showNotification("🚀 SelfDev — Думка дня", {
+                body: body,
+                icon: "icon-192.png",
+                badge: "icon-192.png",
+                tag: "selfdev-daily"
+            });
+
+        }else{
+
+            new Notification("🚀 SelfDev — Думка дня", { body: body, icon: "icon-192.png" });
+
+        }
+
+        localStorage.setItem(NOTIF_LAST_SHOWN_KEY, today);
+
+    }catch(e){
+
+        console.error("Notification error", e);
+
+    }
+
+}
+
+async function tryRegisterPeriodicSync(){
+
+    if(!("serviceWorker" in navigator)) return;
+
+    try{
+
+        const reg = await navigator.serviceWorker.ready;
+
+        if("periodicSync" in reg){
+
+            const status = await navigator.permissions.query({ name: "periodic-background-sync" });
+
+            if(status.state === "granted"){
+
+                await reg.periodicSync.register("selfdev-daily-reminder", {
+                    minInterval: 12 * 60 * 60 * 1000
+                });
+
+            }
+
+        }
+
+    }catch(e){
+
+        // Periodic Background Sync недоступний у цьому браузері (наприклад Safari/Firefox) — це нормально
+
+    }
+
+}
+
+document.addEventListener("visibilitychange", () => {
+
+    if(document.visibilityState === "visible"){
+        maybeShowDailyReminder();
+    }
+
+});
+
+window.addEventListener("load", () => {
+
+    updateNotifButton();
+
+    if(notificationsEnabled() && "Notification" in window && Notification.permission === "granted"){
+
+        tryRegisterPeriodicSync();
+        maybeShowDailyReminder();
+
+    }
+
+});
+
+// ----------------
+// Windows Widgets Board — надсилаємо актуальні дані у service worker,
+// щоб він міг оновити плитку у Widgets Board (лише Edge / Windows 11)
+// ----------------
+
+function syncWidgetData(){
+
+    if(!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
+
+    const days = Math.floor(Date.now()/86400000);
+
+    const quote = quotes[days % quotes.length];
+
+    const openGoals = goals.filter(g=>!g.done).length;
+
+    let goalsSummary;
+
+    if(goals.length === 0){
+        goalsSummary = "Ще немає цілей — додай першу в застосунку";
+    }else if(openGoals === 0){
+        goalsSummary = "✅ Усі цілі на сьогодні виконано!";
+    }else{
+        goalsSummary = `🎯 Ще не виконано: ${openGoals} із ${goals.length}`;
+    }
+
+    navigator.serviceWorker.controller.postMessage({
+        type: "update-widget",
+        payload: {
+            quoteText: quote.text,
+            goalsSummary: goalsSummary
+        }
+    });
+
+}
+
+// Відповідаємо, коли ОС щойно встановила віджет і просить свіжі дані
+if("serviceWorker" in navigator){
+
+    navigator.serviceWorker.addEventListener("message", event => {
+
+        if(event.data && event.data.type === "widget-installed"){
+            syncWidgetData();
+        }
+
+    });
+
+}
+
+window.addEventListener("load", () => {
+
+    if("serviceWorker" in navigator){
+
+        navigator.serviceWorker.ready.then(() => syncWidgetData());
+
+    }
+
+});

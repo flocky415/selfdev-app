@@ -1,22 +1,80 @@
 {
+  "id": "/",
   "name": "SelfDev",
   "short_name": "SelfDev",
   "description": "Застосунок для саморозвитку",
-  "start_url": "./",
+  "start_url": "./?source=pwa",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
   "background_color": "#0f172a",
   "theme_color": "#4f46e5",
   "orientation": "portrait",
+  "lang": "uk",
+  "categories": ["productivity", "lifestyle"],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Звички",
+      "url": "./?page=habits",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Цілі",
+      "url": "./?page=goals",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pomodoro",
+      "url": "./?page=timer",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "widgets": [
+    {
+      "name": "SelfDev — Думка дня",
+      "description": "Цитата дня та прогрес цілей на сьогодні, без відкриття застосунку",
+      "tag": "selfdev-daily-widget",
+      "template": "selfdev-daily-template",
+      "ms_ac_template": "widgets/widget-template.json",
+      "data": "widgets/widget-data.json",
+      "type": "application/json",
+      "update": 14400,
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192" }
+      ],
+      "screenshots": [
+        {
+          "src": "widgets/widget-screenshot.png",
+          "sizes": "600x400",
+          "label": "Віджет SelfDev з цитатою дня та цілями"
+        }
+      ]
     }
   ]
 }

@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>SelfDev</title>
 
@@ -11,34 +11,86 @@
 
 <meta name="theme-color" content="#4F46E5">
 
-<!-- iOS PWA support -->
+<!-- iOS: Add to Home Screen support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SelfDev">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+
+<!-- Windows/Edge tile -->
+<meta name="msapplication-TileColor" content="#4f46e5">
+<meta name="msapplication-TileImage" content="icon-192.png">
+
+<!-- Android Chrome -->
+<meta name="mobile-web-app-capable" content="yes">
 
 </head>
 
 <body>
 
-<div id="toast"></div>
-
 <header>
+
+<div id="toast"></div>
 
 <h1>🚀 SelfDev</h1>
 
-<button type="button" id="themeBtn" onclick="toggleTheme()" aria-label="Змінити тему">
+<div style="display:flex;align-items:center;gap:8px;">
+
+<button type="button" id="installBtn" class="install-btn" style="display:none;" onclick="installApp()">
+⬇️ Встановити
+</button>
+
+<button type="button" id="themeBtn" onclick="toggleTheme()">
 🌙
 </button>
 
+</div>
+
 </header>
+
+
+<nav>
+
+<button type="button" class="tab active" data-page="home">
+🏠
+</button>
+
+<button type="button" class="tab" data-page="habits">
+✅
+</button>
+
+<button type="button" class="tab" data-page="goals">
+🎯
+</button>
+
+<!-- notes moved
+<button type="button" class="tab" data-page="notes">
+📖
+</button>-->
+
+<button type="button" id="moreBtn">
+☰
+<br>
+Ще
+</button>
+
+</nav>
 
 <main>
 
 <section id="home" class="page active">
 
 <h2>🏠 Головна</h2>
+
+<div class="card" id="iosInstallHint" style="display:none;">
+
+<h3>📲 Встанови на iPhone</h3>
+
+<p>Натисни кнопку "Поділитися" <b>⬆️</b> внизу Safari, потім обери <b>"На екран Домівки"</b>.</p>
+
+</div>
 
 <div class="card">
 
@@ -56,6 +108,10 @@
 
 <div id="quoteCategory"></div>
 
+<button type="button" id="notifBtn" onclick="toggleNotifications()" style="margin-top:15px;width:100%;">
+🔕 Увімкнути нагадування
+</button>
+
 </div>
 
 <div class="card">
@@ -64,7 +120,7 @@
 
 <div class="xpCircle">
 
-<svg width="170" height="170" viewBox="0 0 170 170">
+<svg width="170" height="170">
 
 <circle
 cx="85"
@@ -135,13 +191,33 @@ class="progressCircle"/>
 
 </div>
 
+<div class="card">
+
+<h3>🥇 Мої досягнення</h3>
+
+<ul id="achievementList">
+
+<li>🔒 Перше виконане завдання</li>
+
+<li>🔒 10 виконаних звичок</li>
+
+<li>🔒 100 XP</li>
+
+<li>🔒 500 XP</li>
+
+<li>🔒 1000 XP</li>
+
+</ul>
+
+</div>
+
 </section>
 
 <section id="habits" class="page">
 
-<h2>✅ Звички</h2>
+<h2>Звички</h2>
 
-<input id="habitInput" placeholder="Нова звичка" onkeydown="if(event.key==='Enter')addHabit()">
+<input id="habitInput" placeholder="Нова звичка">
 <input
 id="habitSearch"
 placeholder="🔍 Пошук звички"
@@ -157,13 +233,9 @@ onkeyup="searchHabits()">
 
 <section id="goals" class="page">
 
-<h2>🎯 Цілі</h2>
+<h2>Цілі</h2>
 
-<input id="goalInput" placeholder="Нова ціль" onkeydown="if(event.key==='Enter')addGoal()">
-
-<label class="field-label">Дедлайн (необов'язково)</label>
-<input type="date" id="goalDeadline">
-
+<input id="goalInput" placeholder="Нова ціль">
 <input
 id="goalSearch"
 placeholder="🔍 Пошук цілі"
@@ -183,18 +255,18 @@ onkeyup="searchGoals()">
 
 <div id="timerText">25:00</div>
 
-<label>🍅 Робота, хв</label>
+<label>🍅 Робота</label>
 
 <div class="time-control">
-<button type="button" onclick="changePomodoro(-1)" aria-label="Менше">−</button>
+<button type="button" onclick="changePomodoro(-1)">−</button>
 
 <input type="number" id="pomodoroMinutes" min="1" max="180" value="25">
 
-<button type="button" onclick="changePomodoro(1)" aria-label="Більше">+</button>
+<button type="button" onclick="changePomodoro(1)">+</button>
 </div>
 
 <button type="button" onclick="savePomodoroTime()">💾 Зберегти</button>
-<button type="button" id="timerToggleBtn" onclick="toggleTimer()">▶️ Старт</button>
+<button type="button" onclick="startTimer()">▶️ Старт</button>
 <button type="button" onclick="resetTimer()">🔄 Скинути</button>
 
 </section>
@@ -227,21 +299,13 @@ onkeyup="searchGoals()">
 
 </div>
 
-<div class="card">
-
-<h3>📉 Динаміка за 14 днів</h3>
-
-<canvas id="historyChart" height="180"></canvas>
-
-</div>
-
 </section>
 
 <section id="notes" class="page">
 
-<h2>📝 Щоденник</h2>
+<h2>Щоденник</h2>
 
-<textarea id="note" placeholder="Що на думці сьогодні?"></textarea>
+<textarea id="note"></textarea>
 
 <button type="button" onclick="saveNote()">
 Зберегти
@@ -258,7 +322,6 @@ onkeyup="searchGoals()">
 <input
 type="file"
 id="importFile"
-accept="application/json"
 style="display:none"
 onchange="importData(event)">
 
@@ -266,52 +329,29 @@ onchange="importData(event)">
 Імпортувати
 </button>
 
-<div class="card sync-card">
-
-<h3>☁️ Хмарна синхронізація</h3>
-
-<p class="hint-text">
-Дані зберігаються лише на цьому телефоні. Щоб бачити їх і на іншому пристрої — підключіть безкоштовну базу Firebase (5 хв, інструкція нижче) і використовуйте один код на всіх пристроях.
-</p>
-
-<button type="button" class="more-item" onclick="toggleSyncSetup()">
-⚙️ Налаштувати Firebase
-</button>
-
-<div id="syncSetup" style="display:none">
-
-<textarea id="cloudConfigInput" class="sync-textarea" placeholder='Вставте Firebase config, напр.: {"apiKey":"...","authDomain":"...","projectId":"..."}'></textarea>
-
-<div class="sync-code-row">
-<input id="syncCode" placeholder="Код синхронізації">
-<button type="button" onclick="generateSyncCode()" aria-label="Згенерувати код">🎲</button>
-</div>
-
-<button type="button" onclick="connectCloud()">
-🔌 Підключити
-</button>
-
-<label class="checkbox-row">
-<input type="checkbox" id="autoSyncCheckbox" onchange="toggleAutoSync()">
-Автоматично зберігати зміни в хмару
-</label>
-
-</div>
-
-<div class="sync-actions">
-<button type="button" onclick="pushToCloud(false)">⬆️ В хмару</button>
-<button type="button" onclick="pullFromCloud()">⬇️ З хмари</button>
-</div>
-
-<p id="syncStatus" class="sync-status">Не підключено</p>
-
-</div>
-
 </section>
 
 <section id="achievements" class="page">
 
 <h2>🏆 Досягнення</h2>
+
+<h3>📈 Продуктивність</h3>
+
+<div class="chart-box">
+
+<canvas
+id="achievementChart"
+width="380"
+height="260">
+</canvas>
+
+</div>
+
+<div id="achievementList">
+
+</div>
+
+</section>
 
 <div class="card">
 
@@ -321,52 +361,21 @@ onchange="importData(event)">
 
 <canvas
 id="achievementChart"
-height="200">
+width="380"
+height="260">
 </canvas>
 
 </div>
 
 </div>
 
-<ul id="achievementList">
+<div id="achievementList">
 
-<li>🔒 Перше виконане завдання</li>
-
-<li>🔒 10 виконаних звичок</li>
-
-<li>🔒 100 XP</li>
-
-<li>🔒 500 XP</li>
-
-<li>🔒 1000 XP</li>
-
-</ul>
+</div>
 
 </section>
 
 </main>
-
-<nav>
-
-<button type="button" class="tab active" data-page="home" aria-label="Головна">
-🏠
-</button>
-
-<button type="button" class="tab" data-page="habits" aria-label="Звички">
-✅
-</button>
-
-<button type="button" class="tab" data-page="goals" aria-label="Цілі">
-🎯
-</button>
-
-<button type="button" id="moreBtn" aria-label="Більше">
-☰
-<br>
-Ще
-</button>
-
-</nav>
 
 <div id="moreMenu" class="more-menu">
 
@@ -382,15 +391,11 @@ height="200">
             📝 Нотатки
         </button>
 
-        <button class="more-item" onclick="openPage('stats')">
-            📈 Статистика
-        </button>
-
         <button class="more-item" onclick="openPage('achievements')">
             🏆 Досягнення
         </button>
 
-        <button class="more-item close" onclick="closeMoreMenu()">
+        <button class="more-item" onclick="closeMoreMenu()">
             ❌ Закрити
         </button>
 
@@ -398,7 +403,27 @@ height="200">
 
 </div>
 
+<div id="customModal" class="modal-overlay">
+
+    <div class="modal-box">
+
+        <p id="modalMessage"></p>
+
+        <input id="modalInput" style="display:none;">
+
+        <div class="modal-actions">
+
+            <button type="button" id="modalCancelBtn">Скасувати</button>
+            <button type="button" id="modalOkBtn">OK</button>
+
+        </div>
+
+    </div>
+
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 <script src="quotes.js"></script>
 <script src="app.js"></script>

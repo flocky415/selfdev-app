@@ -82,6 +82,80 @@ localStorage.setItem("lastOpen",lastOpen);
 
 }
 
+function animateNumber(el, to, suffix){
+
+    if(!el) return;
+
+    suffix = suffix || "";
+
+    const from = Number(el.dataset.value) || 0;
+
+    if(from === to){
+        el.innerText = to + suffix;
+        el.dataset.value = to;
+        return;
+    }
+
+    const duration = 600;
+    const start = performance.now();
+
+    function step(now){
+
+        const progress = Math.min((now-start)/duration, 1);
+        const eased = 1 - Math.pow(1-progress, 3);
+        const value = Math.round(from + (to-from)*eased);
+
+        el.innerText = value + suffix;
+
+        if(progress < 1){
+            requestAnimationFrame(step);
+        }else{
+            el.innerText = to + suffix;
+            el.dataset.value = to;
+        }
+
+    }
+
+    requestAnimationFrame(step);
+
+}
+
+function playCheckAnimation(li){
+
+    if(!li) return;
+
+    const mark = document.createElement("span");
+
+    mark.className = "check-pop";
+    mark.innerText = "✓";
+
+    li.appendChild(mark);
+
+    setTimeout(()=> mark.remove(), 700);
+
+}
+
+function showLevelUpCelebration(newLevel){
+
+    const overlay = document.getElementById("levelUpOverlay");
+    const numberEl = document.getElementById("levelUpNumber");
+
+    if(!overlay) return;
+
+    if(numberEl) numberEl.innerText = newLevel;
+
+    overlay.classList.remove("show");
+
+    void overlay.offsetWidth;
+
+    overlay.classList.add("show");
+
+    launchConfetti();
+
+    setTimeout(()=> overlay.classList.remove("show"), 1900);
+
+}
+
 function updateLevel(){
 
 let leveledUp=false;
@@ -102,7 +176,7 @@ if(xpText){
 xpText.innerText = xp;
 
 }
-document.getElementById("level").innerText=level;
+animateNumber(document.getElementById("level"), level);
 
 const percent=xp%100;
 
@@ -125,7 +199,7 @@ bar.style.width=percent+"%";
 
 if(leveledUp){
 
-launchConfetti();
+showLevelUpCelebration(level);
 
 }
 
@@ -320,11 +394,14 @@ list.innerHTML="";
 
 const order = getHabitOrder();
 
-order.forEach((index)=>{
+order.forEach((index, pos)=>{
 
 const habit = habits[index];
 
 const li=document.createElement("li");
+
+li.dataset.index = index;
+li.style.animationDelay = (Math.min(pos,10)*0.04)+"s";
 
 if(habit.done)
 li.classList.add("done");
@@ -444,9 +521,11 @@ updateDayProgress();
 
 function toggleHabit(index){
 
-habits[index].done=!habits[index].done;
+const willBeDone = !habits[index].done;
 
-if(habits[index].done){
+habits[index].done = willBeDone;
+
+if(willBeDone){
 
 xp+=10;
 showToast("+10 XP 🎉");
@@ -464,19 +543,44 @@ updateHistory();
 renderHabits();
 updateDayProgress();
 
+if(willBeDone){
+
+const li = document.querySelector('#habitList [data-index="'+index+'"]');
+playCheckAnimation(li);
+
+}
+
 }
 
 function deleteHabit(index){
 
 if(!confirm("Видалити звичку?")) return;
 
-habits.splice(index,1);
+const li = document.querySelector('#habitList [data-index="'+index+'"]');
 
-save();
-updateHistory();
-renderHabits();
-updateStats();
-updateDayProgress();
+function finalizeDelete(){
+
+    habits.splice(index,1);
+
+    save();
+    updateHistory();
+    renderHabits();
+    updateStats();
+    updateDayProgress();
+
+}
+
+if(li){
+
+    li.classList.add("removing");
+
+    setTimeout(finalizeDelete, 300);
+
+}else{
+
+    finalizeDelete();
+
+}
 
 }
 
@@ -562,11 +666,14 @@ goals.forEach(goal => {
 
 const order = getGoalOrder();
 
-order.forEach((index)=>{
+order.forEach((index, pos)=>{
 
 const goal = goals[index];
 
 const li=document.createElement("li");
+
+li.dataset.index = index;
+li.style.animationDelay = (Math.min(pos,10)*0.04)+"s";
 
 if(goal.done)
 li.classList.add("done");
@@ -685,9 +792,11 @@ updateDayProgress();
 
 function toggleGoal(index){
 
-goals[index].done=!goals[index].done;
+const willBeDone = !goals[index].done;
 
-if(goals[index].done){
+goals[index].done = willBeDone;
+
+if(willBeDone){
 
 xp+=25;
 showToast("+25 XP 🏆");
@@ -706,20 +815,45 @@ updateStats();
 checkAchievements();
 updateDayProgress();
 
+if(willBeDone){
+
+const li = document.querySelector('#goalList [data-index="'+index+'"]');
+playCheckAnimation(li);
+
+}
+
 }
 
 function deleteGoal(index){
 
 if(!confirm("Видалити ціль?")) return;
 
-goals.splice(index,1);
+const li = document.querySelector('#goalList [data-index="'+index+'"]');
 
-save();
+function finalizeDelete(){
 
-updateHistory();
-renderGoals();
-updateStats();
-updateDayProgress();
+    goals.splice(index,1);
+
+    save();
+
+    updateHistory();
+    renderGoals();
+    updateStats();
+    updateDayProgress();
+
+}
+
+if(li){
+
+    li.classList.add("removing");
+
+    setTimeout(finalizeDelete, 300);
+
+}else{
+
+    finalizeDelete();
+
+}
 
 }
 
@@ -755,9 +889,9 @@ const habit=document.getElementById("habitCount");
 const goal=document.getElementById("goalCount");
 const streakText=document.getElementById("streakCount");
 
-if(habit) habit.innerText=habitsDone;
+animateNumber(habit, habitsDone);
 
-if(goal) goal.innerText=goalsDone;
+animateNumber(goal, goalsDone);
 
 if(streakText){
 
@@ -791,11 +925,11 @@ bar.style.width=percent+"%";
 
 }
 
-const text=document.getElementById("dayProgressText");
+const numberEl=document.getElementById("dayProgressNumber");
 
-if(text){
+if(numberEl){
 
-text.innerText=percent+"% виконано";
+animateNumber(numberEl, percent);
 
 }
 

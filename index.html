@@ -29,6 +29,8 @@
 
 <h3 id="achievementModalTitle">Досягнення розблоковано!</h3>
 
+<p style="opacity:.8;margin-bottom:15px;font-size:14px">Забери нагороду в списку досягнень 🎁</p>
+
 <button type="button" onclick="closeAchievementModal()">
 Чудово!
 </button>
@@ -43,11 +45,43 @@
 
 </div>
 
+<div id="bonusOverlay" class="levelup-overlay">
+
+<h1 class="levelup-text">🎁 +50 XP<br>БОНУС ДНЯ!</h1>
+
+</div>
+
 <header>
 
 <div id="toast"></div>
 
 <h1 id="logoBtn" onclick="openPage('home')">🚀 SelfDev</h1>
+
+<div class="header-xp-badge" onclick="openPage('home')">
+
+<div class="header-xp-ring-wrap">
+
+<svg width="30" height="30" viewBox="0 0 30 30">
+
+<circle cx="15" cy="15" r="12" class="header-xp-bg"/>
+
+<circle cx="15" cy="15" r="12" id="headerXpRing" class="header-xp-ring"/>
+
+</svg>
+
+<span id="headerXpLevel">1</span>
+
+</div>
+
+<div class="header-xp-info">
+
+<b>Lvl <span id="headerXpLevelText">1</span></b>
+
+<small><span id="headerXpCurrent">0</span>/100 XP</small>
+
+</div>
+
+</div>
 
 <div style="display:flex;align-items:center;gap:6px">
 
@@ -147,6 +181,22 @@ class="progressCircle"/>
 
 </div>
 
+<div class="xp-scale">
+
+<div class="xp-scale-bar">
+
+<div id="xpScaleFill">
+
+<span class="xp-spark">✨</span>
+
+</div>
+
+</div>
+
+<p id="xpScaleText"><span id="xpScaleCurrent">0</span> / 100 XP до наступного рівня</p>
+
+</div>
+
 </div>
 
 <div class="card">
@@ -191,21 +241,23 @@ class="progressCircle"/>
 
 </div>
 
+<div class="card daily-bonus-card">
+
+<h3>🎁 Щоденний бонус</h3>
+
+<p id="dailyBonusText">Виконай усі завдання дня, щоб отримати бонус</p>
+
+<button type="button" id="dailyBonusBtn" onclick="claimDailyBonus()" disabled>
+🎁 Забрати +50 XP
+</button>
+
+</div>
+
 <div class="card">
 
 <h3>🥇 Мої досягнення</h3>
 
-<ul id="achievementList">
-
-<li>🔒 Перше виконане завдання</li>
-
-<li>🔒 10 виконаних звичок</li>
-
-<li>🔒 100 XP</li>
-
-<li>🔒 500 XP</li>
-
-<li>🔒 1000 XP</li>
+<ul id="achievementList" class="achievement-list">
 
 </ul>
 

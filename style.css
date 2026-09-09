@@ -325,6 +325,14 @@ height:260px;
 
 }
 
+@media(max-width:380px){
+
+.header-xp-info{
+display:none;
+}
+
+}
+
 textarea{
 width:100%;
 height:220px;
@@ -375,6 +383,15 @@ transform:scale(1.05);
 
 button:active{
 transform:scale(.96);
+}
+
+button:disabled{
+cursor:not-allowed;
+}
+
+button:disabled:hover,
+button:disabled:active{
+transform:none;
 }
 
 ul{
@@ -472,7 +489,7 @@ margin-top:10px;
 }
 
 }
-#achievementList{
+.achievement-list{
 
 list-style:none;
 
@@ -480,30 +497,203 @@ margin-top:15px;
 
 }
 
-#achievementList li{
+.achievement-item{
 
+display:flex;
+align-items:center;
+gap:14px;
 background:#334155;
-
-padding:12px;
-
-border-radius:12px;
-
+padding:14px 16px;
+border-radius:14px;
 margin-bottom:10px;
-
-font-size:15px;
-
-transition:.3s;
+opacity:.55;
+filter:grayscale(.6);
+transition:.4s;
+position:relative;
+overflow:hidden;
+animation:listItemEnter .35s ease both;
 
 }
 
-.unlocked{
+.achievement-icon{
 
-background:#22c55e !important;
+font-size:26px;
+width:44px;
+height:44px;
+min-width:44px;
+display:flex;
+align-items:center;
+justify-content:center;
+background:rgba(255,255,255,.08);
+border-radius:50%;
 
-color:white;
+}
+
+.achievement-info{
+
+flex:1;
+
+}
+
+.achievement-name{
 
 font-weight:bold;
+font-size:15px;
 
+}
+
+.achievement-progress-text{
+
+font-size:12px;
+opacity:.75;
+margin-top:3px;
+
+}
+
+.achievement-badge{
+
+background:#fff;
+color:#16a34a;
+width:26px;
+height:26px;
+min-width:26px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:bold;
+font-size:14px;
+
+}
+
+.achievement-item.unlocked{
+
+opacity:1;
+filter:none;
+background:linear-gradient(135deg,#22c55e,#16a34a);
+box-shadow:0 8px 22px rgba(34,197,94,.35);
+animation:achievementGlow 2.5s ease-in-out infinite;
+color:white;
+
+}
+
+.achievement-item.unlocked .achievement-icon{
+
+background:rgba(255,255,255,.25);
+
+}
+
+.achievement-item.unlocked::after{
+
+content:"";
+position:absolute;
+top:0;
+left:-60%;
+width:40%;
+height:100%;
+background:linear-gradient(120deg, transparent, rgba(255,255,255,.45), transparent);
+animation:shineSweep 3s ease-in-out infinite;
+
+}
+
+@keyframes shineSweep{
+0%{left:-60%;}
+50%{left:120%;}
+100%{left:120%;}
+}
+
+@keyframes achievementGlow{
+0%,100%{box-shadow:0 8px 22px rgba(34,197,94,.35);}
+50%{box-shadow:0 8px 32px rgba(34,197,94,.6);}
+}
+
+.achievement-item.claimable{
+
+opacity:1;
+filter:none;
+cursor:pointer;
+color:white;
+background:linear-gradient(135deg,#f97316,#facc15);
+animation:claimablePulse 1.3s ease-in-out infinite;
+
+}
+
+.achievement-item.claimable .achievement-icon{
+
+background:rgba(255,255,255,.3);
+
+}
+
+.achievement-item.claimable:active{
+
+transform:scale(.98);
+
+}
+
+.achievement-claim-btn{
+
+background:rgba(255,255,255,.25);
+padding:8px 14px;
+border-radius:10px;
+font-weight:bold;
+font-size:13px;
+white-space:nowrap;
+
+}
+
+@keyframes claimablePulse{
+0%,100%{box-shadow:0 8px 20px rgba(250,204,21,.4);transform:scale(1);}
+50%{box-shadow:0 10px 30px rgba(250,204,21,.7);transform:scale(1.015);}
+}
+
+.light .achievement-item{
+
+background:#e5e7eb;
+color:#111827;
+
+}
+
+.daily-bonus-card{
+
+text-align:center;
+
+}
+
+#dailyBonusBtn{
+
+margin-top:15px;
+width:100%;
+opacity:.4;
+cursor:not-allowed;
+transition:.35s;
+background:#334155;
+
+}
+
+#dailyBonusBtn.ready{
+
+opacity:1;
+cursor:pointer;
+background:linear-gradient(135deg,#f97316,#facc15);
+color:#1e293b;
+animation:bonusPulse 1.4s ease-in-out infinite;
+box-shadow:0 0 25px rgba(250,204,21,.5);
+
+}
+
+#dailyBonusBtn.claimed{
+
+opacity:.6;
+cursor:default;
+animation:none;
+background:#334155;
+color:white;
+
+}
+
+@keyframes bonusPulse{
+0%,100%{transform:scale(1);}
+50%{transform:scale(1.04);}
 }
 
 .xpCircle{
@@ -568,6 +758,75 @@ font-weight:bold;
 
 }
 
+.xp-scale{
+
+margin-top:20px;
+
+}
+
+.xp-scale-bar{
+
+height:16px;
+background:#334155;
+border-radius:100px;
+overflow:visible;
+position:relative;
+transition:box-shadow .4s ease;
+
+}
+
+.xp-scale-bar.near-levelup{
+
+animation:xpBarGlow 1.2s ease-in-out infinite;
+
+}
+
+@keyframes xpBarGlow{
+0%,100%{box-shadow:0 0 8px rgba(139,92,246,.5);}
+50%{box-shadow:0 0 22px rgba(139,92,246,.9);}
+}
+
+#xpScaleFill{
+
+height:100%;
+width:0%;
+background:linear-gradient(90deg,#6366f1,#8b5cf6,#6366f1);
+background-size:200% 100%;
+animation:waveMove 3s linear infinite;
+transition:width .5s ease;
+border-radius:100px;
+overflow:visible;
+position:relative;
+
+}
+
+.xp-spark{
+
+position:absolute;
+right:-10px;
+top:50%;
+transform:translateY(-50%);
+font-size:18px;
+animation:sparkPulse 1s ease-in-out infinite;
+filter:drop-shadow(0 0 6px rgba(255,255,255,.8));
+
+}
+
+@keyframes sparkPulse{
+0%,100%{transform:translateY(-50%) scale(1);}
+50%{transform:translateY(-50%) scale(1.35);}
+}
+
+#xpScaleText{
+
+text-align:center;
+margin-top:10px;
+font-size:14px;
+opacity:.85;
+font-weight:bold;
+
+}
+
 .light{
 
 background:#f1f5f9;
@@ -616,6 +875,88 @@ font-size:26px;
 cursor:pointer;
 
 color:white;
+
+}
+
+.header-xp-badge{
+
+display:flex;
+align-items:center;
+gap:8px;
+cursor:pointer;
+flex-shrink:0;
+
+}
+
+.header-xp-ring-wrap{
+
+position:relative;
+width:30px;
+height:30px;
+display:flex;
+align-items:center;
+justify-content:center;
+flex-shrink:0;
+
+}
+
+.header-xp-bg{
+
+fill:none;
+stroke:rgba(255,255,255,.15);
+stroke-width:3;
+
+}
+
+.header-xp-ring{
+
+fill:none;
+stroke:#8b5cf6;
+stroke-width:3;
+stroke-linecap:round;
+stroke-dasharray:75;
+stroke-dashoffset:75;
+transform:rotate(-90deg);
+transform-origin:50% 50%;
+transition:stroke-dashoffset .5s ease;
+
+}
+
+#headerXpLevel{
+
+position:absolute;
+font-size:11px;
+font-weight:bold;
+color:white;
+
+}
+
+.header-xp-info{
+
+display:flex;
+flex-direction:column;
+line-height:1.25;
+color:white;
+
+}
+
+.header-xp-info b{
+
+font-size:13px;
+
+}
+
+.header-xp-info small{
+
+font-size:10px;
+opacity:.7;
+
+}
+
+.light #headerXpLevel,
+.light .header-xp-info{
+
+color:#111827;
 
 }
 
@@ -721,17 +1062,19 @@ margin:18px 0;
 
 display:inline-block;
 
-padding:6px 12px;
+padding:5px 12px;
 
 border-radius:20px;
 
-background:#2563eb;
+background:rgba(56,189,248,.15);
 
-font-size:14px;
+border:1px solid rgba(56,189,248,.4);
 
-font-weight:bold;
+font-size:13px;
 
-color:white;
+font-weight:600;
+
+color:#38bdf8;
 
 }
 
@@ -740,6 +1083,16 @@ color:white;
 background:white;
 
 border-left:5px solid #2563eb;
+
+}
+
+.light #quoteCategory{
+
+background:rgba(37,99,235,.1);
+
+border:1px solid rgba(37,99,235,.35);
+
+color:#2563eb;
 
 }
 

@@ -35,13 +35,20 @@ let xp = Number(localStorage.getItem("xp")) || 0;
 let level = Number(localStorage.getItem("level")) || 1;
 
 let unlockedAchievements = JSON.parse(localStorage.getItem("unlockedAchievements")) || [];
+let claimedAchievements = JSON.parse(localStorage.getItem("claimedAchievements")) || [];
 
 const achievementDefs = [
-    { name:"Перше виконане завдання", check: ()=> habits.filter(h=>h.done).length>=1 },
-    { name:"10 виконаних звичок", check: ()=> habits.filter(h=>h.done).length>=10 },
-    { name:"100 XP", check: ()=> level>=2 },
-    { name:"500 XP", check: ()=> level>=6 },
-    { name:"1000 XP", check: ()=> level>=11 }
+    { name:"Перше виконане завдання", icon:"🎯", target:1, reward:20, progress: ()=> Math.min(habits.filter(h=>h.done).length,1), check: ()=> habits.filter(h=>h.done).length>=1 },
+    { name:"10 виконаних звичок", icon:"🔥", target:10, reward:40, progress: ()=> Math.min(habits.filter(h=>h.done).length,10), check: ()=> habits.filter(h=>h.done).length>=10 },
+    { name:"25 виконаних звичок", icon:"💪", target:25, reward:80, progress: ()=> Math.min(habits.filter(h=>h.done).length,25), check: ()=> habits.filter(h=>h.done).length>=25 },
+    { name:"Перша виконана ціль", icon:"🚩", target:1, reward:20, progress: ()=> Math.min(goals.filter(g=>g.done).length,1), check: ()=> goals.filter(g=>g.done).length>=1 },
+    { name:"5 виконаних цілей", icon:"🏆", target:5, reward:60, progress: ()=> Math.min(goals.filter(g=>g.done).length,5), check: ()=> goals.filter(g=>g.done).length>=5 },
+    { name:"10 виконаних цілей", icon:"💎", target:10, reward:100, progress: ()=> Math.min(goals.filter(g=>g.done).length,10), check: ()=> goals.filter(g=>g.done).length>=10 },
+    { name:"Серія 7 днів", icon:"📅", target:7, reward:50, progress: ()=> Math.min(streak,7), check: ()=> streak>=7 },
+    { name:"Серія 30 днів", icon:"🌟", target:30, reward:150, progress: ()=> Math.min(streak,30), check: ()=> streak>=30 },
+    { name:"100 XP (Рівень 2)", icon:"⭐", target:2, reward:60, progress: ()=> Math.min(level,2), check: ()=> level>=2 },
+    { name:"500 XP (Рівень 6)", icon:"🏅", target:6, reward:100, progress: ()=> Math.min(level,6), check: ()=> level>=6 },
+    { name:"1000 XP (Рівень 11)", icon:"👑", target:11, reward:200, progress: ()=> Math.min(level,11), check: ()=> level>=11 }
 ];
 let theme =
 localStorage.getItem("theme") || "dark";
@@ -178,6 +185,22 @@ xpText.innerText = xp;
 }
 animateNumber(document.getElementById("level"), level);
 
+const headerLevel = document.getElementById("headerXpLevel");
+
+if(headerLevel){
+
+animateNumber(headerLevel, level);
+
+}
+
+const headerLevelText = document.getElementById("headerXpLevelText");
+
+if(headerLevelText){
+
+animateNumber(headerLevelText, level);
+
+}
+
 const percent=xp%100;
 
 const circle=document.getElementById("xpCircle");
@@ -189,11 +212,51 @@ circle.style.strokeDashoffset=
 
 }
 
+const headerRing=document.getElementById("headerXpRing");
+
+if(headerRing){
+
+headerRing.style.strokeDashoffset=
+75-(75*percent/100);
+
+}
+
+const headerCurrent = document.getElementById("headerXpCurrent");
+
+if(headerCurrent){
+
+animateNumber(headerCurrent, xp);
+
+}
+
 const bar=document.getElementById("progressBar");
 
 if(bar){
 
 bar.style.width=percent+"%";
+
+}
+
+const xpFill = document.getElementById("xpScaleFill");
+const xpBar = document.querySelector(".xp-scale-bar");
+
+if(xpFill){
+
+xpFill.style.width = percent+"%";
+
+}
+
+if(xpBar){
+
+xpBar.classList.toggle("near-levelup", percent>=85);
+
+}
+
+const xpScaleCurrent = document.getElementById("xpScaleCurrent");
+
+if(xpScaleCurrent){
+
+animateNumber(xpScaleCurrent, xp);
 
 }
 
@@ -289,33 +352,95 @@ next.innerHTML=
 
 function checkAchievements(){
 
-const list=document.querySelectorAll("#achievementList li");
-
-if(!list.length) return;
-
 achievementDefs.forEach((def, i)=>{
-
-    if(!list[i]) return;
 
     const unlocked = def.check();
 
-    if(unlocked){
+    if(unlocked && !unlockedAchievements.includes(i)){
 
-        list[i].classList.add("unlocked");
+        unlockedAchievements.push(i);
 
-        if(!unlockedAchievements.includes(i)){
+        localStorage.setItem("unlockedAchievements", JSON.stringify(unlockedAchievements));
 
-            unlockedAchievements.push(i);
-
-            localStorage.setItem("unlockedAchievements", JSON.stringify(unlockedAchievements));
-
-            showAchievementModal(def.name);
-
-        }
+        showAchievementModal(def.name);
 
     }
 
 });
+
+renderAchievementList();
+
+}
+
+function renderAchievementList(){
+
+const list = document.getElementById("achievementList");
+
+if(!list) return;
+
+list.innerHTML = "";
+
+achievementDefs.forEach((def, i)=>{
+
+    const unlocked = unlockedAchievements.includes(i);
+    const claimed = claimedAchievements.includes(i);
+    const claimable = unlocked && !claimed;
+
+    const li = document.createElement("li");
+
+    li.className = "achievement-item";
+    if(claimed) li.classList.add("unlocked");
+    if(claimable) li.classList.add("claimable");
+
+    li.style.animationDelay = (i*0.06)+"s";
+
+    const progressVal = def.progress ? def.progress() : 0;
+    const progressText = (def.target && !unlocked) ? `${progressVal}/${def.target}` : "";
+
+    let rightSide = "";
+
+    if(claimed){
+        rightSide = '<div class="achievement-badge">✓</div>';
+    }else if(claimable){
+        rightSide = `<div class="achievement-claim-btn">🎁 +${def.reward} XP</div>`;
+        li.onclick = ()=> claimAchievement(i);
+    }
+
+    li.innerHTML = `
+        <div class="achievement-icon">${unlocked ? def.icon : "🔒"}</div>
+        <div class="achievement-info">
+            <div class="achievement-name">${def.name}</div>
+            ${progressText ? `<div class="achievement-progress-text">${progressText}</div>` : ""}
+        </div>
+        ${rightSide}
+    `;
+
+    list.appendChild(li);
+
+});
+
+}
+
+function claimAchievement(i){
+
+    if(!unlockedAchievements.includes(i)) return;
+    if(claimedAchievements.includes(i)) return;
+
+    const def = achievementDefs[i];
+
+    claimedAchievements.push(i);
+
+    localStorage.setItem("claimedAchievements", JSON.stringify(claimedAchievements));
+
+    xp += def.reward;
+
+    updateLevel();
+
+    launchConfetti();
+
+    showToast(`🎁 +${def.reward} XP за "${def.name}"`);
+
+    renderAchievementList();
 
 }
 
@@ -932,6 +1057,94 @@ if(numberEl){
 animateNumber(numberEl, percent);
 
 }
+
+updateDailyBonusState();
+
+}
+
+let dailyBonusClaimedDate = localStorage.getItem("dailyBonusClaimedDate") || "";
+
+function updateDailyBonusState(){
+
+const total = habits.length + goals.length;
+const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
+
+const allDone = total > 0 && done === total;
+
+const btn = document.getElementById("dailyBonusBtn");
+const text = document.getElementById("dailyBonusText");
+
+if(!btn || !text) return;
+
+const today = new Date().toLocaleDateString();
+
+const alreadyClaimed = dailyBonusClaimedDate === today;
+
+btn.classList.remove("ready","claimed");
+
+if(alreadyClaimed){
+
+    btn.disabled = true;
+    btn.classList.add("claimed");
+    btn.innerText = "✅ Отримано на сьогодні";
+    text.innerText = "Повертайся завтра за новим бонусом!";
+
+}else if(allDone){
+
+    btn.disabled = false;
+    btn.classList.add("ready");
+    btn.innerText = "🎁 Забрати +50 XP";
+    text.innerText = "Усі завдання виконано! Забирай нагороду 🔥";
+
+}else{
+
+    btn.disabled = true;
+    btn.innerText = "🎁 Забрати +50 XP";
+    text.innerText = total===0
+        ? "Додай звички чи цілі, щоб отримати бонус"
+        : `Залишилось ${total-done} із ${total} завдань до бонусу`;
+
+}
+
+}
+
+function claimDailyBonus(){
+
+const today = new Date().toLocaleDateString();
+
+if(dailyBonusClaimedDate === today) return;
+
+dailyBonusClaimedDate = today;
+
+localStorage.setItem("dailyBonusClaimedDate", today);
+
+xp += 50;
+
+updateLevel();
+
+showBonusCelebration();
+
+showToast("🎁 +50 XP щоденний бонус!");
+
+updateDailyBonusState();
+
+}
+
+function showBonusCelebration(){
+
+const overlay = document.getElementById("bonusOverlay");
+
+if(!overlay) return;
+
+overlay.classList.remove("show");
+
+void overlay.offsetWidth;
+
+overlay.classList.add("show");
+
+launchConfetti();
+
+setTimeout(()=> overlay.classList.remove("show"), 1900);
 
 }
 

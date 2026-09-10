@@ -1,4 +1,4 @@
-const CACHE = "selfdev-v17";
+const CACHE = "selfdev-v22";
 
 const FILES = [
   "./",
@@ -6,7 +6,9 @@ const FILES = [
   "./style.css",
   "./app.js",
   "./quotes.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./firebase-config.js",
+  "./friends.js"
 ];
 
 self.addEventListener("install", event => {

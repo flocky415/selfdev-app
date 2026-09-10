@@ -3,6 +3,7 @@
 // ----------------
 
 let streak = Number(localStorage.getItem("streak")) || 0;
+let streakFreezes = Number(localStorage.getItem("streakFreezes")) || 0;
 let lastOpen = localStorage.getItem("lastOpen") || "";
 
 let pomodoroTime = Number(localStorage.getItem("pomodoroTime")) || 1500;
@@ -44,8 +45,8 @@ const achievementDefs = [
     { name:"Перша виконана ціль", icon:"🚩", target:1, reward:20, progress: ()=> Math.min(goals.filter(g=>g.done).length,1), check: ()=> goals.filter(g=>g.done).length>=1 },
     { name:"5 виконаних цілей", icon:"🏆", target:5, reward:60, progress: ()=> Math.min(goals.filter(g=>g.done).length,5), check: ()=> goals.filter(g=>g.done).length>=5 },
     { name:"10 виконаних цілей", icon:"💎", target:10, reward:100, progress: ()=> Math.min(goals.filter(g=>g.done).length,10), check: ()=> goals.filter(g=>g.done).length>=10 },
-    { name:"Серія 7 днів", icon:"📅", target:7, reward:50, progress: ()=> Math.min(streak,7), check: ()=> streak>=7 },
-    { name:"Серія 30 днів", icon:"🌟", target:30, reward:150, progress: ()=> Math.min(streak,30), check: ()=> streak>=30 },
+    { name:"Серія 7 днів", icon:"📅", target:7, reward:50, freezeReward:1, progress: ()=> Math.min(streak,7), check: ()=> streak>=7 },
+    { name:"Серія 30 днів", icon:"🌟", target:30, reward:150, freezeReward:3, progress: ()=> Math.min(streak,30), check: ()=> streak>=30 },
     { name:"100 XP (Рівень 2)", icon:"⭐", target:2, reward:60, progress: ()=> Math.min(level,2), check: ()=> level>=2 },
     { name:"500 XP (Рівень 6)", icon:"🏅", target:6, reward:100, progress: ()=> Math.min(level,6), check: ()=> level>=6 },
     { name:"1000 XP (Рівень 11)", icon:"👑", target:11, reward:200, progress: ()=> Math.min(level,11), check: ()=> level>=11 }
@@ -190,6 +191,14 @@ const headerLevel = document.getElementById("headerXpLevel");
 if(headerLevel){
 
 animateNumber(headerLevel, level);
+
+}
+
+const homeAvatar = document.getElementById("homeAvatar");
+
+if(homeAvatar){
+
+homeAvatar.innerText = getAvatarForLevel(level);
 
 }
 
@@ -419,6 +428,31 @@ achievementDefs.forEach((def, i)=>{
 
 });
 
+renderBadgeGalleryPreview();
+
+}
+
+function renderBadgeGalleryPreview(){
+
+const container = document.getElementById("badgeGalleryPreview");
+
+if(!container) return;
+
+container.innerHTML = "";
+
+achievementDefs.forEach((def, i)=>{
+
+    const claimed = claimedAchievements.includes(i);
+
+    const badge = document.createElement("div");
+
+    badge.className = "mini-badge " + (claimed ? "on" : "off");
+    badge.innerText = claimed ? def.icon : "🔒";
+
+    container.appendChild(badge);
+
+});
+
 }
 
 function claimAchievement(i){
@@ -438,7 +472,21 @@ function claimAchievement(i){
 
     launchConfetti();
 
-    showToast(`🎁 +${def.reward} XP за "${def.name}"`);
+    if(def.freezeReward){
+
+        streakFreezes += def.freezeReward;
+
+        localStorage.setItem("streakFreezes", streakFreezes);
+
+        showToast(`🎁 +${def.reward} XP та ❄️ +${def.freezeReward} заморозка за "${def.name}"`);
+
+    }else{
+
+        showToast(`🎁 +${def.reward} XP за "${def.name}"`);
+
+    }
+
+    updateStats();
 
     renderAchievementList();
 
@@ -535,7 +583,7 @@ li.innerHTML=`
 
 <div>
 
-<b>${habit.name}</b><br>
+<b>${getSphereIcon(habit.category)} ${habit.name}</b><br>
 
 <small>📅 ${habit.created}</small><br>
 
@@ -630,6 +678,7 @@ habits.push({
     name: input.value.trim(),
     done: false,
     pinned: false,
+    category: document.getElementById("habitCategory") ? document.getElementById("habitCategory").value : "personal",
     created: new Date().toLocaleString(),
     updated: new Date().toLocaleString()
 });
@@ -807,7 +856,7 @@ li.innerHTML=`
 
 <div>
 
-<b>${goal.name}</b><br>
+<b>${getSphereIcon(goal.category)} ${goal.name}</b><br>
 
 <small>📅 ${goal.created}</small><br>
 
@@ -898,6 +947,7 @@ goals.push({
     name: input.value.trim(),
     done: false,
     pinned: false,
+    category: document.getElementById("goalCategory") ? document.getElementById("goalCategory").value : "personal",
     created: new Date().toLocaleString(),
     updated: new Date().toLocaleString()
 });
@@ -1005,6 +1055,146 @@ renderGoals();
 
 }
 
+const lifeSpheres = [
+    { key:"health", name:"Здоров'я", icon:"💪", color:"#22c55e" },
+    { key:"career", name:"Кар'єра", icon:"💼", color:"#6366f1" },
+    { key:"learning", name:"Навчання", icon:"📚", color:"#f97316" },
+    { key:"personal", name:"Особисте", icon:"🌟", color:"#ec4899" }
+];
+
+function getSphereIcon(categoryKey){
+
+const sphere = lifeSpheres.find(s => s.key === (categoryKey || "personal"));
+
+return sphere ? sphere.icon : "🌟";
+
+}
+
+function updateLifeSpheres(){
+
+const container = document.getElementById("lifeSpheresList");
+
+if(!container) return;
+
+container.innerHTML = "";
+
+lifeSpheres.forEach(sphere=>{
+
+    const items = [...habits, ...goals].filter(i => (i.category || "personal") === sphere.key);
+    const done = items.filter(i=>i.done).length;
+    const total = items.length;
+    const percent = total===0 ? 0 : Math.round(done/total*100);
+
+    const div = document.createElement("div");
+
+    div.className = "sphere";
+
+    div.innerHTML =
+        '<div class="sphere-icon" style="background:'+sphere.color+'33">'+sphere.icon+'</div>'+
+        '<div class="sphere-info">'+
+        '<div class="sphere-name"><span>'+sphere.name+'</span><span>'+done+'/'+total+'</span></div>'+
+        '<div class="sphere-bar"><div class="sphere-fill" style="width:'+percent+'%;background:'+sphere.color+'"></div></div>'+
+        '</div>';
+
+    container.appendChild(div);
+
+});
+
+}
+
+function getAvatarForLevel(lvl){
+
+if(lvl>=11) return "👑";
+if(lvl>=6) return "🦸";
+if(lvl>=3) return "🧑";
+return "🌱";
+
+}
+
+const companionPhrases = [
+    "Ти можеш більше! 💪",
+    "Ще один крок вперед! 🚀",
+    "Пишаюсь тобою! 🌟",
+    "Не зупиняйся, все чудово йде! 🔥",
+    "Разом до мети! 🎯",
+    "Сьогодні гарний день для звичок! ☀️",
+    "Я тут, поруч з тобою! 🤝",
+    "Маленькі кроки — великий результат! 📈",
+    "Ти сильніший, ніж вчора! 💫"
+];
+
+function companionTap(el){
+
+const phrase = companionPhrases[Math.floor(Math.random()*companionPhrases.length)];
+
+showToast(getAvatarForLevel(level)+" "+phrase);
+
+if(el){
+
+    el.classList.add("tapped");
+
+    setTimeout(()=> el.classList.remove("tapped"), 400);
+
+}
+
+}
+
+function getCompanionMoodClass(){
+
+const total = habits.length + goals.length;
+const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
+
+if(total===0) return "";
+
+const percent = done/total;
+
+if(percent>=1) return "mood-happy";
+if(percent===0) return "mood-sleepy";
+
+return "";
+
+}
+
+function showCompanionGreeting(){
+
+const today = new Date().toLocaleDateString();
+const lastGreeting = localStorage.getItem("lastCompanionGreeting");
+
+if(lastGreeting === today) return;
+
+localStorage.setItem("lastCompanionGreeting", today);
+
+const phrase = companionPhrases[Math.floor(Math.random()*companionPhrases.length)];
+
+setTimeout(()=> showToast(getAvatarForLevel(level)+" "+phrase), 900);
+
+}
+
+function renderStreakDisplay(elementId){
+
+const el = document.getElementById(elementId);
+
+if(!el) return;
+
+let flameClass = "";
+
+if(streak>=14) flameClass = "flame-hot";
+else if(streak>=5) flameClass = "flame-medium";
+
+const avatar = getAvatarForLevel(level);
+const moodClass = getCompanionMoodClass();
+
+const freezeBadge = streakFreezes > 0
+    ? `<span class="freeze-badge">❄️ ${streakFreezes}</span>`
+    : "";
+
+el.innerHTML =
+    streak+' <span class="flame-icon '+flameClass+'">🔥</span>'+
+    '<span class="avatar-companion '+moodClass+'" onclick="companionTap(this)">'+avatar+'</span>'+
+    freezeBadge;
+
+}
+
 function updateStats(){
 
 const habitsDone=habits.filter(h=>h.done).length;
@@ -1012,20 +1202,19 @@ const goalsDone=goals.filter(g=>g.done).length;
 
 const habit=document.getElementById("habitCount");
 const goal=document.getElementById("goalCount");
-const streakText=document.getElementById("streakCount");
 
 animateNumber(habit, habitsDone);
 
 animateNumber(goal, goalsDone);
 
-if(streakText){
+renderStreakDisplay("streakCount");
+renderStreakDisplay("homeStreakDisplay");
 
-    let flameClass = "";
+updateLifeSpheres();
 
-    if(streak>=14) flameClass = "flame-hot";
-    else if(streak>=5) flameClass = "flame-medium";
+if(typeof syncMyProfileToCloud === "function"){
 
-    streakText.innerHTML = streak+' <span class="flame-icon '+flameClass+'">🔥</span>';
+    syncMyProfileToCloud();
 
 }
 
@@ -1150,11 +1339,14 @@ setTimeout(()=> overlay.classList.remove("show"), 1900);
 
 function updateStreak(){
 
-const today = new Date().toLocaleDateString();
+const now = new Date();
+const todayISO = now.toISOString().slice(0,10);
 
-if(lastOpen != today){
+if(lastOpen !== todayISO){
 
-if(lastOpen != ""){
+const isLegacyFormat = lastOpen !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(lastOpen);
+
+if(lastOpen !== ""){
 
 habits.forEach(h=>{
 
@@ -1162,9 +1354,34 @@ h.done=false;
 
 });
 
+if(!isLegacyFormat){
+
+const lastDate = new Date(lastOpen+"T00:00:00");
+const diffDays = Math.round((now - lastDate) / 86400000);
+
+if(diffDays > 1){
+
+const missedDays = diffDays - 1;
+
+if(streakFreezes >= missedDays){
+
+streakFreezes -= missedDays;
+localStorage.setItem("streakFreezes", streakFreezes);
+showToast(`❄️ Використано ${missedDays} заморозку(и) — стрік збережено!`);
+
+}else{
+
+streak = 0;
+
 }
 
-lastOpen=today;
+}
+
+}
+
+}
+
+lastOpen=todayISO;
 
 streak++;
 
@@ -1481,6 +1698,12 @@ function openPage(page){
         tab.classList.add("active");
     }
 
+    if(page === "friends" && typeof renderFriendsPage === "function"){
+
+        renderFriendsPage();
+
+    }
+
 }
 
 function updateHistory(){
@@ -1517,6 +1740,107 @@ function updateHistory(){
     save();
 
     drawAchievementChart();
+    updateWeeklySummary();
+    renderActivityHeatmap();
+
+}
+
+function renderActivityHeatmap(){
+
+const container = document.getElementById("activityHeatmap");
+
+if(!container) return;
+
+container.innerHTML = "";
+
+const days = 91;
+const now = new Date();
+
+for(let i=days-1;i>=0;i--){
+
+    const d = new Date(now.getTime() - i*86400000);
+    const iso = d.toISOString().slice(0,10);
+
+    const entry = history.find(h=>h.date===iso);
+    const percent = entry ? entry.percent : 0;
+
+    let level = 0;
+
+    if(percent>=75) level=3;
+    else if(percent>=40) level=2;
+    else if(percent>0) level=1;
+
+    const div = document.createElement("div");
+
+    if(level>0) div.className = "l"+level;
+
+    div.title = iso+": "+percent+"%";
+
+    container.appendChild(div);
+
+}
+
+}
+
+function updateWeeklySummary(){
+
+    const avgEl = document.getElementById("weekAvgPercent");
+    const bestEl = document.getElementById("weekBestDay");
+    const diffEl = document.getElementById("weekDiff");
+
+    if(!avgEl || !bestEl || !diffEl) return;
+
+    const now = new Date();
+    const dayNames = ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"];
+
+    function dateStr(offset){
+
+        const d = new Date(now.getTime() - offset*86400000);
+
+        return { iso: d.toISOString().slice(0,10), dayIndex: d.getDay() };
+
+    }
+
+    let thisWeekTotal = 0;
+    let bestPercent = -1;
+    let bestDayIndex = null;
+
+    for(let i=0;i<7;i++){
+
+        const { iso, dayIndex } = dateStr(i);
+        const entry = history.find(h=>h.date===iso);
+        const percent = entry ? entry.percent : 0;
+
+        thisWeekTotal += percent;
+
+        if(percent > bestPercent){
+            bestPercent = percent;
+            bestDayIndex = dayIndex;
+        }
+
+    }
+
+    let lastWeekTotal = 0;
+
+    for(let i=7;i<14;i++){
+
+        const { iso } = dateStr(i);
+        const entry = history.find(h=>h.date===iso);
+
+        lastWeekTotal += entry ? entry.percent : 0;
+
+    }
+
+    const avgThis = Math.round(thisWeekTotal/7);
+    const avgLast = Math.round(lastWeekTotal/7);
+    const diff = avgThis - avgLast;
+
+    animateNumber(avgEl, avgThis, "%");
+
+    bestEl.innerText = bestPercent > 0 ? dayNames[bestDayIndex] : "—";
+
+    diffEl.innerText = (diff>=0?"+":"")+diff+"%";
+    diffEl.style.color = diff>=0 ? "#22c55e" : "#ef4444";
 
 }
 
@@ -1623,6 +1947,10 @@ window.addEventListener("load", () => {
     try{ updateAchievements(); }catch(e){ console.error("updateAchievements:", e); }
     try{ checkAchievements(); }catch(e){ console.error("checkAchievements:", e); }
     try{ drawAchievementChart(); }catch(e){ console.error("drawAchievementChart:", e); }
+    try{ updateWeeklySummary(); }catch(e){ console.error("updateWeeklySummary:", e); }
+    try{ updateLifeSpheres(); }catch(e){ console.error("updateLifeSpheres:", e); }
+    try{ renderActivityHeatmap(); }catch(e){ console.error("renderActivityHeatmap:", e); }
+    try{ showCompanionGreeting(); }catch(e){ console.error("showCompanionGreeting:", e); }
 
 });
 

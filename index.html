@@ -51,6 +51,32 @@
 
 </div>
 
+<div id="jarvisChatModal" class="jarvis-chat-modal">
+
+<div class="jarvis-chat-content">
+
+<div class="jarvis-chat-header">
+
+<span>🤖 Джарвіз</span>
+
+<button type="button" onclick="closeJarvisChat()">✕</button>
+
+</div>
+
+<div id="jarvisChatMessages" class="jarvis-chat-messages"></div>
+
+<div class="jarvis-chat-input-row">
+
+<input id="jarvisChatInput" placeholder="Запитай щось..." onkeydown="if(event.key==='Enter') sendJarvisMessage()">
+
+<button type="button" onclick="sendJarvisMessage()">➤</button>
+
+</div>
+
+</div>
+
+</div>
+
 <header>
 
 <div id="toast"></div>
@@ -96,6 +122,12 @@
 </div>
 
 </header>
+
+<div id="jarvisWidget" class="jarvis-widget" onclick="jarvisWidgetTap(this)" title="Джарвіз">
+
+<canvas id="jarvis3dCanvas"></canvas>
+
+</div>
 
 
 <nav>
@@ -609,10 +641,15 @@ onchange="importData(event)">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
 <script src="quotes.js"></script>
 <script src="app.js"></script>
 <script src="firebase-config.js"></script>
 <script src="friends.js"></script>
+<script src="jarvis3d.js"></script>
+<script src="gemini-config.js"></script>
+<script src="jarvis-chat.js"></script>
 
 </body>
 </html>

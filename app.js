@@ -4,6 +4,7 @@
 
 let streak = Number(localStorage.getItem("streak")) || 0;
 let streakFreezes = Number(localStorage.getItem("streakFreezes")) || 0;
+let lastStreakDate = localStorage.getItem("lastStreakDate") || "";
 let lastOpen = localStorage.getItem("lastOpen") || "";
 
 let pomodoroTime = Number(localStorage.getItem("pomodoroTime")) || 1500;
@@ -710,6 +711,8 @@ updateStats();
 
 checkAchievements();
 
+registerStreakActivity();
+
 }
 
 save();
@@ -979,6 +982,8 @@ showToast("+25 XP 🏆");
 updateLevel();
 launchConfetti();
 
+registerStreakActivity();
+
 }
 
 save();
@@ -1111,6 +1116,8 @@ return "🌱";
 
 }
 
+const companionName = "Джарвіз";
+
 const companionPhrases = [
     "Ти можеш більше! 💪",
     "Ще один крок вперед! 🚀",
@@ -1127,7 +1134,13 @@ function companionTap(el){
 
 const phrase = companionPhrases[Math.floor(Math.random()*companionPhrases.length)];
 
-showToast(getAvatarForLevel(level)+" "+phrase);
+showToast(getAvatarForLevel(level)+" "+companionName+": "+phrase);
+
+if(typeof jarvisTapSpin === "function"){
+
+    jarvisTapSpin();
+
+}
 
 if(el){
 
@@ -1155,6 +1168,22 @@ return "";
 
 }
 
+function updateJarvisWidget(){
+
+if(typeof updateJarvis3DMood === "function"){
+
+    updateJarvis3DMood();
+
+}
+
+if(typeof updateJarvis3DAccessory === "function"){
+
+    updateJarvis3DAccessory();
+
+}
+
+}
+
 function showCompanionGreeting(){
 
 const today = new Date().toLocaleDateString();
@@ -1166,7 +1195,7 @@ localStorage.setItem("lastCompanionGreeting", today);
 
 const phrase = companionPhrases[Math.floor(Math.random()*companionPhrases.length)];
 
-setTimeout(()=> showToast(getAvatarForLevel(level)+" "+phrase), 900);
+setTimeout(()=> showToast(getAvatarForLevel(level)+" "+companionName+": "+phrase), 900);
 
 }
 
@@ -1209,6 +1238,8 @@ animateNumber(goal, goalsDone);
 
 renderStreakDisplay("streakCount");
 renderStreakDisplay("homeStreakDisplay");
+
+updateJarvisWidget();
 
 updateLifeSpheres();
 
@@ -1344,8 +1375,6 @@ const todayISO = now.toISOString().slice(0,10);
 
 if(lastOpen !== todayISO){
 
-const isLegacyFormat = lastOpen !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(lastOpen);
-
 if(lastOpen !== ""){
 
 habits.forEach(h=>{
@@ -1354,9 +1383,31 @@ h.done=false;
 
 });
 
-if(!isLegacyFormat){
+}
 
-const lastDate = new Date(lastOpen+"T00:00:00");
+lastOpen=todayISO;
+
+save();
+
+renderHabits();
+updateStats();
+
+}
+
+}
+
+function registerStreakActivity(){
+
+const now = new Date();
+const todayISO = now.toISOString().slice(0,10);
+
+if(lastStreakDate === todayISO) return;
+
+const isLegacyFormat = lastStreakDate !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(lastStreakDate);
+
+if(lastStreakDate !== "" && !isLegacyFormat){
+
+const lastDate = new Date(lastStreakDate+"T00:00:00");
 const diffDays = Math.round((now - lastDate) / 86400000);
 
 if(diffDays > 1){
@@ -1379,18 +1430,19 @@ streak = 0;
 
 }
 
-}
-
-lastOpen=todayISO;
-
+lastStreakDate = todayISO;
 streak++;
 
-save();
+localStorage.setItem("lastStreakDate", lastStreakDate);
+localStorage.setItem("streak", streak);
 
-renderHabits();
+setTimeout(()=>{
+
+    showToast("🔥 Стрік: "+streak+" "+(streak===1?"день":"днів"));
+
+}, 1600);
+
 updateStats();
-
-}
 
 }
 

@@ -1197,6 +1197,88 @@ animation:none;
 
 }
 
+.jarvis-widget{
+
+position:fixed;
+top:110px;
+right:14px;
+z-index:150;
+width:52px;
+height:52px;
+background:#1e293b;
+border:2px solid #6366f1;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+box-shadow:0 6px 20px rgba(0,0,0,.4);
+cursor:pointer;
+animation:companionBounce 2.4s ease-in-out infinite;
+transition:.3s;
+
+}
+
+#jarvis3dCanvas{
+
+width:100%;
+height:100%;
+display:block;
+
+}
+
+.jarvis-widget.tapped{
+
+animation:companionPop .4s ease;
+
+}
+
+.jarvis-widget.mood-happy{
+
+border-color:#facc15;
+box-shadow:0 0 20px rgba(250,204,21,.6);
+animation:companionBounce 1.2s ease-in-out infinite;
+
+}
+
+.jarvis-widget.mood-sleepy{
+
+opacity:.55;
+filter:grayscale(.7);
+animation:none;
+
+}
+
+.light .jarvis-widget{
+
+background:white;
+
+}
+
+@media(max-width:380px){
+
+.jarvis-widget{
+width:42px;
+height:42px;
+font-size:20px;
+top:95px;
+right:10px;
+}
+
+}
+
+@media(min-width:900px){
+
+.jarvis-widget{
+width:88px;
+height:88px;
+top:130px;
+right:30px;
+border-width:3px;
+}
+
+}
+
 .freeze-badge{
 
 display:inline-block;
@@ -1437,6 +1519,40 @@ font-size:15px;
 
 opacity:.7;
 font-size:12px;
+
+}
+
+.shared-flame{
+
+font-size:16px;
+flex-shrink:0;
+text-align:center;
+animation:sharedFlamePulse 1.5s ease-in-out infinite;
+filter:drop-shadow(0 0 8px rgba(249,115,22,.7));
+
+}
+
+.shared-flame small{
+
+display:block;
+font-size:11px;
+font-weight:bold;
+opacity:.9;
+
+}
+
+.shared-flame.dim{
+
+opacity:.4;
+filter:grayscale(.8);
+animation:none;
+
+}
+
+@keyframes sharedFlamePulse{
+
+0%,100%{transform:scale(1);}
+50%{transform:scale(1.15);}
 
 }
 
@@ -1760,5 +1876,158 @@ animation:levelUpPop .6s cubic-bezier(.34,1.56,.64,1);
 0%{transform:scale(.3);opacity:0;}
 60%{transform:scale(1.15);opacity:1;}
 100%{transform:scale(1);opacity:1;}
+
+}
+
+.jarvis-chat-modal{
+
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.6);
+display:none;
+align-items:flex-end;
+justify-content:center;
+z-index:99997;
+padding:0;
+
+}
+
+.jarvis-chat-modal.show{
+
+display:flex;
+
+}
+
+.jarvis-chat-content{
+
+background:#1e293b;
+width:100%;
+max-width:480px;
+height:70vh;
+max-height:600px;
+border-radius:20px 20px 0 0;
+display:flex;
+flex-direction:column;
+animation:slideUp .3s ease;
+overflow:hidden;
+
+}
+
+.jarvis-chat-header{
+
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:16px 20px;
+background:#334155;
+font-weight:bold;
+font-size:16px;
+
+}
+
+.jarvis-chat-header button{
+
+background:none;
+padding:4px 10px;
+font-size:16px;
+
+}
+
+.jarvis-chat-messages{
+
+flex:1;
+overflow-y:auto;
+padding:16px;
+display:flex;
+flex-direction:column;
+gap:10px;
+
+}
+
+.jarvis-bubble{
+
+max-width:75%;
+padding:10px 14px;
+border-radius:16px;
+font-size:14px;
+line-height:1.4;
+white-space:pre-wrap;
+
+}
+
+.jarvis-bubble.bot{
+
+background:#334155;
+align-self:flex-start;
+border-bottom-left-radius:4px;
+
+}
+
+.jarvis-bubble.user{
+
+background:#6366f1;
+color:white;
+align-self:flex-end;
+border-bottom-right-radius:4px;
+
+}
+
+.jarvis-chat-input-row{
+
+display:flex;
+gap:8px;
+padding:14px;
+background:#1e293b;
+border-top:1px solid #334155;
+
+}
+
+.jarvis-chat-input-row input{
+
+flex:1;
+margin:0;
+
+}
+
+.jarvis-chat-input-row button{
+
+padding:14px 18px;
+flex-shrink:0;
+
+}
+
+.light .jarvis-chat-content{
+
+background:#f1f5f9;
+
+}
+
+.light .jarvis-chat-header{
+
+background:#e5e7eb;
+
+}
+
+.light .jarvis-bubble.bot{
+
+background:#e5e7eb;
+color:#111827;
+
+}
+
+@media(min-width:900px){
+
+.jarvis-chat-modal{
+
+align-items:center;
+
+}
+
+.jarvis-chat-content{
+
+height:600px;
+border-radius:20px;
+
+}
 
 }

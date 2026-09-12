@@ -78,13 +78,70 @@ function createFriendProfile(){
 
 }
 
+function getMyTodayPercent(){
+
+const total = habits.length + goals.length;
+const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
+
+return total===0 ? 0 : Math.round(done/total*100);
+
+}
+
+async function getOrUpdateJointStreak(friendCode, friendTodayPercent){
+
+if(!db || !myFriendCode) return 0;
+
+const pairKey = [myFriendCode, friendCode].sort().join("_");
+const todayISO = new Date().toISOString().slice(0,10);
+const yesterdayISO = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+
+const myTodayPercent = getMyTodayPercent();
+const bothActiveToday = myTodayPercent > 0 && friendTodayPercent > 0;
+
+try{
+
+    const docRef = db.collection("pairs").doc(pairKey);
+    const doc = await docRef.get();
+
+    let jointStreak = 0;
+    let lastJointDate = "";
+
+    if(doc.exists){
+
+        const data = doc.data();
+
+        jointStreak = data.jointStreak || 0;
+        lastJointDate = data.lastJointDate || "";
+
+    }
+
+    if(!bothActiveToday || lastJointDate === todayISO){
+
+        return jointStreak;
+
+    }
+
+    jointStreak = (lastJointDate === yesterdayISO) ? jointStreak+1 : 1;
+
+    await docRef.set({ jointStreak, lastJointDate: todayISO });
+
+    return jointStreak;
+
+}catch(e){
+
+    console.error("Joint streak:", e);
+
+    return 0;
+
+}
+
+}
+
 function syncMyProfileToCloud(){
 
     if(!firebaseReady || !db || !myFriendCode) return;
 
-    const total = habits.length + goals.length;
-    const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
-    const todayPercent = total===0 ? 0 : Math.round(done/total*100);
+    const todayPercent = getMyTodayPercent();
 
     db.collection("users").doc(myFriendCode).set({
         name: myFriendName,
@@ -216,11 +273,32 @@ async function renderFriendsList(){
 
     }
 
+    const myTodayPercent = getMyTodayPercent();
+
+    for(const f of results){
+
+        f.jointStreak = await getOrUpdateJointStreak(f.code, f.todayPercent);
+
+    }
+
     results.forEach((f, i)=>{
 
         const div = document.createElement("div");
 
         div.className = "friend-card";
+
+        const bothActiveToday = myTodayPercent > 0 && f.todayPercent > 0;
+
+        let sharedFlame = "";
+
+        if(f.jointStreak > 0){
+
+            sharedFlame =
+                '<div class="shared-flame'+(bothActiveToday ? "" : " dim")+'" title="Спільний вогник з '+f.name+'">'+
+                '🔥🤝<small>'+f.jointStreak+'</small>'+
+                '</div>';
+
+        }
 
         div.innerHTML =
             '<div class="friend-rank">'+(i+1)+'</div>'+
@@ -229,6 +307,7 @@ async function renderFriendsList(){
             '<b>'+f.name+'</b>'+
             '<small>Рівень '+f.level+' · '+f.streak+' 🔥 · сьогодні '+f.todayPercent+'%</small>'+
             '</div>'+
+            sharedFlame+
             '<button onclick="removeFriend(\''+f.code+'\')">🗑</button>';
 
         list.appendChild(div);

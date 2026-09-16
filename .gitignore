@@ -1,0 +1,8 @@
+# Секрети — не комітити!
+firebase-config.js
+gemini-config.js
+
+# Системні файли
+.DS_Store
+Thumbs.db
+node_modules/

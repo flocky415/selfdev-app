@@ -102,7 +102,9 @@ async function sendJarvisMessage(){
 
 }
 
-async function askGemini(){
+async function askGemini(retryCount){
+
+    retryCount = retryCount || 0;
 
     if(typeof geminiConfig === "undefined" || !geminiConfig.apiKey || geminiConfig.apiKey === "YOUR_GEMINI_API_KEY"){
 
@@ -142,6 +144,16 @@ async function askGemini(){
         }
 
         if(data.error){
+
+            const isOverloaded = data.error.code === 503 || (data.error.status === "UNAVAILABLE");
+
+            if(isOverloaded && retryCount < 2){
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                return askGemini(retryCount + 1);
+
+            }
 
             console.error("Gemini API error:", data.error);
 

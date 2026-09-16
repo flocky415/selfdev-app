@@ -124,10 +124,13 @@ async function askGemini(retryCount){
     try{
 
         const response = await fetch(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key="+geminiConfig.apiKey,
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": geminiConfig.apiKey
+                },
                 body: JSON.stringify({
                     system_instruction: { parts: [{ text: systemContext }] },
                     contents: contents

@@ -67,7 +67,7 @@
 
 <div class="jarvis-chat-input-row">
 
-<input id="jarvisChatInput" placeholder="Запитай щось..." onkeydown="if(event.key==='Enter') sendJarvisMessage()">
+<input id="jarvisChatInput" placeholder="Запитай щось..." onkeydown="if(event.key==='Enter') sendJarvisMessage()" onfocus="setTimeout(()=>this.scrollIntoView({block:'center', behavior:'smooth'}), 300)">
 
 <button type="button" onclick="sendJarvisMessage()">➤</button>
 

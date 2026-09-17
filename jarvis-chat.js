@@ -4,6 +4,57 @@
 
 let jarvisChatHistory = [];
 
+// ----------------
+// Захист від мобільної клавіатури: position:fixed модалка не рухається
+// разом з visual viewport, коли з'являється клавіатура — тож рахуємо
+// перекриття вручну і піднімаємо модалку/поле вводу над клавіатурою.
+// ----------------
+
+function updateJarvisViewportOffset(){
+
+    const modal = document.getElementById("jarvisChatModal");
+
+    if(!modal) return;
+
+    if(!window.visualViewport){
+
+        return;
+
+    }
+
+    const vv = window.visualViewport;
+
+    document.documentElement.style.setProperty("--jarvis-vvh", vv.height + "px");
+
+    if(!modal.classList.contains("show")) return;
+
+    const keyboardOverlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+
+    modal.style.paddingBottom = keyboardOverlap + "px";
+
+}
+
+function setupJarvisKeyboardFix(){
+
+    if(!window.visualViewport) return;
+
+    window.visualViewport.addEventListener("resize", updateJarvisViewportOffset);
+    window.visualViewport.addEventListener("scroll", updateJarvisViewportOffset);
+
+    updateJarvisViewportOffset();
+
+}
+
+try{
+
+    setupJarvisKeyboardFix();
+
+}catch(e){
+
+    console.error("Jarvis keyboard fix init:", e);
+
+}
+
 function jarvisWidgetTap(el){
 
     if(typeof jarvisTapSpin === "function"){
@@ -32,6 +83,8 @@ function openJarvisChat(){
 
     modal.classList.add("show");
 
+    updateJarvisViewportOffset();
+
     if(jarvisChatHistory.length === 0){
 
         const phrase = typeof companionPhrases !== "undefined"
@@ -52,7 +105,12 @@ function closeJarvisChat(){
 
     const modal = document.getElementById("jarvisChatModal");
 
-    if(modal) modal.classList.remove("show");
+    if(modal){
+
+        modal.classList.remove("show");
+        modal.style.paddingBottom = "";
+
+    }
 
 }
 

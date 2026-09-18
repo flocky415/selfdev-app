@@ -13,6 +13,24 @@ let timer = pomodoroTime;
 let habits = JSON.parse(localStorage.getItem("habits")) || [];
 let goals = JSON.parse(localStorage.getItem("goals")) || [];
 let history = JSON.parse(localStorage.getItem("history")) || [];
+let notes = JSON.parse(localStorage.getItem("notes")) || [];
+let activityLog = JSON.parse(localStorage.getItem("activityLog")) || [];
+
+// Міграція старої єдиної нотатки в новий список нотаток
+const legacyNote = localStorage.getItem("note");
+
+if(legacyNote && legacyNote.trim() !== "" && notes.length === 0){
+
+    notes.push({
+        text: legacyNote,
+        created: new Date().toLocaleString(),
+        updated: new Date().toLocaleString()
+    });
+
+    localStorage.setItem("notes", JSON.stringify(notes));
+    localStorage.removeItem("note");
+
+}
 
 // Оновлення старих даних
 goals.forEach(goal => {
@@ -41,8 +59,8 @@ let claimedAchievements = JSON.parse(localStorage.getItem("claimedAchievements")
 
 const achievementDefs = [
     { name:"Перше виконане завдання", icon:"🎯", target:1, reward:20, progress: ()=> Math.min(habits.filter(h=>h.done).length,1), check: ()=> habits.filter(h=>h.done).length>=1 },
-    { name:"10 виконаних звичок", icon:"🔥", target:10, reward:40, progress: ()=> Math.min(habits.filter(h=>h.done).length,10), check: ()=> habits.filter(h=>h.done).length>=10 },
-    { name:"25 виконаних звичок", icon:"💪", target:25, reward:80, progress: ()=> Math.min(habits.filter(h=>h.done).length,25), check: ()=> habits.filter(h=>h.done).length>=25 },
+    { name:"10 виконаних завдань", icon:"🔥", target:10, reward:40, progress: ()=> Math.min(habits.filter(h=>h.done).length,10), check: ()=> habits.filter(h=>h.done).length>=10 },
+    { name:"25 виконаних завдань", icon:"💪", target:25, reward:80, progress: ()=> Math.min(habits.filter(h=>h.done).length,25), check: ()=> habits.filter(h=>h.done).length>=25 },
     { name:"Перша виконана ціль", icon:"🚩", target:1, reward:20, progress: ()=> Math.min(goals.filter(g=>g.done).length,1), check: ()=> goals.filter(g=>g.done).length>=1 },
     { name:"5 виконаних цілей", icon:"🏆", target:5, reward:60, progress: ()=> Math.min(goals.filter(g=>g.done).length,5), check: ()=> goals.filter(g=>g.done).length>=5 },
     { name:"10 виконаних цілей", icon:"💎", target:10, reward:100, progress: ()=> Math.min(goals.filter(g=>g.done).length,10), check: ()=> goals.filter(g=>g.done).length>=10 },
@@ -77,11 +95,24 @@ tabs.forEach(tab => {
 
 });
 
+function logActivity(){
+
+activityLog.push(Date.now());
+
+const cutoff = Date.now() - 90*86400000;
+
+activityLog = activityLog.filter(ts => ts > cutoff);
+
+localStorage.setItem("activityLog", JSON.stringify(activityLog));
+
+}
+
 function save(){
 
 localStorage.setItem("habits",JSON.stringify(habits));
 localStorage.setItem("goals",JSON.stringify(goals));
 localStorage.setItem("history", JSON.stringify(history));
+localStorage.setItem("notes", JSON.stringify(notes));
 
 localStorage.setItem("xp",xp);
 localStorage.setItem("level",level);
@@ -345,7 +376,7 @@ text.innerHTML="🔥 Продовжуй!";
 
 }else{
 
-text.innerHTML="🚀 Почни виконувати звички";
+text.innerHTML="🚀 Почни виконувати завдання";
 
 }
 
@@ -669,7 +700,7 @@ return;
 
 if(habits.some(h=>h.name===input.value.trim())){
 
-showToast("Така звичка вже існує");
+showToast("Таке завдання вже існує");
 
 return;
 
@@ -713,6 +744,8 @@ checkAchievements();
 
 registerStreakActivity();
 
+logActivity();
+
 }
 
 save();
@@ -731,7 +764,7 @@ playCheckAnimation(li);
 
 function deleteHabit(index){
 
-if(!confirm("Видалити звичку?")) return;
+if(!confirm("Видалити завдання?")) return;
 
 const li = document.querySelector('#habitList [data-index="'+index+'"]');
 
@@ -765,7 +798,7 @@ function editHabit(index){
 
 const text=prompt(
 
-"Редагувати звичку",
+"Редагувати завдання",
 
 habits[index].name
 
@@ -984,6 +1017,8 @@ launchConfetti();
 
 registerStreakActivity();
 
+logActivity();
+
 }
 
 save();
@@ -1124,7 +1159,7 @@ const companionPhrases = [
     "Пишаюсь тобою! 🌟",
     "Не зупиняйся, все чудово йде! 🔥",
     "Разом до мети! 🎯",
-    "Сьогодні гарний день для звичок! ☀️",
+    "Сьогодні гарний день для завдань! ☀️",
     "Я тут, поруч з тобою! 🤝",
     "Маленькі кроки — великий результат! 📈",
     "Ти сильніший, ніж вчора! 💫"
@@ -1321,7 +1356,7 @@ if(alreadyClaimed){
     btn.disabled = true;
     btn.innerText = "🎁 Забрати +50 XP";
     text.innerText = total===0
-        ? "Додай звички чи цілі, щоб отримати бонус"
+        ? "Додай завдання чи цілі, щоб отримати бонус"
         : `Залишилось ${total-done} із ${total} завдань до бонусу`;
 
 }
@@ -1446,13 +1481,25 @@ updateStats();
 
 }
 
+let timerEndAt = null;
+
 function startTimer(){
 
 if(interval) return;
 
+if(timer<=0){
+
+    timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
+
+}
+
+timerEndAt = Date.now() + timer*1000;
+
 interval = setInterval(()=>{
 
-timer--;
+const remaining = Math.round((timerEndAt - Date.now())/1000);
+
+timer = Math.max(0, remaining);
 
 drawTimer();
 
@@ -1461,6 +1508,8 @@ if(timer<=0){
 clearInterval(interval);
 
 interval=null;
+
+timerEndAt=null;
 
 xp+=20;
 
@@ -1474,7 +1523,7 @@ drawTimer();
 
 }
 
-},1000);
+},250);
 
 }
 
@@ -1483,6 +1532,8 @@ function resetTimer(){
 clearInterval(interval);
 
 interval=null;
+
+timerEndAt=null;
 
 timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
 
@@ -1513,14 +1564,6 @@ localStorage.setItem("theme",theme);
 if(theme=="light"){
 
 document.body.classList.add("light");
-
-}
-
-const note = document.getElementById("note");
-
-if(note){
-
-note.value = localStorage.getItem("note") || "";
 
 }
 
@@ -1590,7 +1633,7 @@ goals,
 xp,
 level,
 streak,
-note:localStorage.getItem("note")||""
+notes
 
 };
 
@@ -1636,7 +1679,7 @@ level=data.level||1;
 
 streak=data.streak||0;
 
-localStorage.setItem("note",data.note||"");
+notes=data.notes||[];
 
 save();
 
@@ -1648,13 +1691,112 @@ reader.readAsText(file);
 
 }
 
-function saveNote(){
+function renderNotes(){
 
-const note = document.getElementById("note").value;
+const list = document.getElementById("notesList");
 
-localStorage.setItem("note", note);
+if(!list) return;
 
-showToast("📖 Нотатку збережено");
+list.innerHTML = "";
+
+notes.forEach((noteItem, index)=>{
+
+    const li = document.createElement("li");
+
+    li.dataset.index = index;
+    li.style.animationDelay = (Math.min(index,10)*0.04)+"s";
+
+    li.innerHTML = `
+
+        <div>
+
+        <div style="white-space:pre-wrap">${noteItem.text}</div><br>
+
+        <small>📅 ${noteItem.created}</small><br>
+
+        <small>✏️ ${noteItem.updated}</small>
+
+        </div>
+
+        <div>
+
+        <button onclick="editNote(${index})">✏️</button>
+
+        <button onclick="deleteNote(${index})">🗑</button>
+
+        </div>
+
+    `;
+
+    list.appendChild(li);
+
+});
+
+}
+
+function addNote(){
+
+const input = document.getElementById("noteInput");
+
+if(!input || input.value.trim()==="") return;
+
+notes.push({
+    text: input.value.trim(),
+    created: new Date().toLocaleString(),
+    updated: new Date().toLocaleString()
+});
+
+input.value = "";
+
+save();
+renderNotes();
+
+showToast("📖 Нотатку додано");
+
+}
+
+function editNote(index){
+
+const text = prompt("Редагувати нотатку", notes[index].text);
+
+if(text===null) return;
+
+if(text.trim()==="") return;
+
+notes[index].text = text;
+notes[index].updated = new Date().toLocaleString();
+
+save();
+renderNotes();
+
+}
+
+function deleteNote(index){
+
+if(!confirm("Видалити нотатку?")) return;
+
+const li = document.querySelector('#notesList [data-index="'+index+'"]');
+
+function finalizeDelete(){
+
+    notes.splice(index,1);
+
+    save();
+    renderNotes();
+
+}
+
+if(li){
+
+    li.classList.add("removing");
+
+    setTimeout(finalizeDelete, 300);
+
+}else{
+
+    finalizeDelete();
+
+}
 
 }
 
@@ -1689,6 +1831,12 @@ function savePomodoroTime(){
 
     pomodoroTime = minutes * 60;
     timer = pomodoroTime;
+
+    if(interval){
+
+        timerEndAt = Date.now() + timer*1000;
+
+    }
 
     localStorage.setItem("pomodoroTime", pomodoroTime);
 
@@ -1896,6 +2044,178 @@ function updateWeeklySummary(){
 
 }
 
+let chartPeriod = localStorage.getItem("chartPeriod") || "day";
+
+function setChartPeriod(period){
+
+    chartPeriod = period;
+
+    localStorage.setItem("chartPeriod", period);
+
+    if(window.achievementChartInstance){
+
+        window.achievementChartInstance.destroy();
+        window.achievementChartInstance = null;
+
+    }
+
+    drawAchievementChart();
+
+}
+
+function getChartData(){
+
+    const monthNames = ["Січ","Лют","Бер","Кві","Тра","Чер","Лип","Сер","Вер","Жов","Лис","Гру"];
+
+    if(chartPeriod === "4h"){
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+        const buckets = [0,0,0,0,0,0];
+        const labels = ["00-04","04-08","08-12","12-16","16-20","20-24"];
+
+        activityLog.forEach(ts=>{
+
+            if(ts >= todayStart){
+
+                const hoursSinceMidnight = (ts - todayStart)/3600000;
+                const bucketIndex = Math.min(5, Math.floor(hoursSinceMidnight/4));
+
+                buckets[bucketIndex]++;
+
+            }
+
+        });
+
+        return { labels, data: buckets, label: "Виконано завдань", isCount: true };
+
+    }
+
+    if(chartPeriod === "day"){
+
+        const now = new Date();
+        const last14 = [];
+
+        for(let i=13;i>=0;i--){
+
+            const d = new Date(now.getTime() - i*86400000);
+            const iso = d.toISOString().slice(0,10);
+
+            const entry = history.find(h=>h.date===iso);
+
+            last14.push({ date: iso, percent: entry ? entry.percent : 0 });
+
+        }
+
+        const labels = last14.map(d => {
+
+            const parts = d.date.split("-");
+
+            return parts.length === 3 ? `${parts[2]}.${parts[1]}` : d.date;
+
+        });
+
+        return { labels, data: last14.map(d=>d.percent), label: "% виконання за день", isCount: false };
+
+    }
+
+    if(chartPeriod === "week" || chartPeriod === "2weeks"){
+
+        const daysPerBucket = chartPeriod === "week" ? 7 : 14;
+        const bucketsCount = 8;
+
+        const labels = [];
+        const data = [];
+
+        for(let i=bucketsCount-1;i>=0;i--){
+
+            const end = new Date(Date.now() - i*daysPerBucket*86400000);
+            const start = new Date(end.getTime() - (daysPerBucket-1)*86400000);
+
+            const startISO = start.toISOString().slice(0,10);
+            const endISO = end.toISOString().slice(0,10);
+
+            const entries = history.filter(h=> h.date >= startISO && h.date <= endISO);
+            const avg = entries.length ? Math.round(entries.reduce((a,b)=>a+b.percent,0)/entries.length) : 0;
+
+            labels.push(`${start.getDate()}.${start.getMonth()+1}`);
+            data.push(avg);
+
+        }
+
+        return { labels, data, label: chartPeriod==="week" ? "% виконання за тиждень" : "% виконання за 2 тижні", isCount: false };
+
+    }
+
+    if(chartPeriod === "month"){
+
+        const grouped = {};
+
+        history.forEach(h=>{
+
+            const monthKey = h.date.slice(0,7);
+
+            if(!grouped[monthKey]) grouped[monthKey] = [];
+
+            grouped[monthKey].push(h.percent);
+
+        });
+
+        const monthKeys = Object.keys(grouped).sort().slice(-12);
+
+        const labels = monthKeys.map(k=>{
+
+            const parts = k.split("-");
+
+            return monthNames[parseInt(parts[1])-1]+" "+parts[0].slice(2);
+
+        });
+
+        const data = monthKeys.map(k=>{
+
+            const vals = grouped[k];
+
+            return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+
+        });
+
+        return { labels, data, label: "% виконання за місяць", isCount: false };
+
+    }
+
+    if(chartPeriod === "year"){
+
+        const grouped = {};
+
+        history.forEach(h=>{
+
+            const yearKey = h.date.slice(0,4);
+
+            if(!grouped[yearKey]) grouped[yearKey] = [];
+
+            grouped[yearKey].push(h.percent);
+
+        });
+
+        const yearKeys = Object.keys(grouped).sort();
+
+        const data = yearKeys.map(k=>{
+
+            const vals = grouped[k];
+
+            return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+
+        });
+
+        return { labels: yearKeys, data, label: "% виконання за рік", isCount: false };
+
+    }
+
+    return { labels: [], data: [], label: "", isCount: false };
+
+}
+
 function drawAchievementChart(){
 
     const canvas = document.getElementById("achievementChart");
@@ -1904,22 +2224,14 @@ function drawAchievementChart(){
 
     if(typeof Chart === "undefined") return;
 
-    const last14 = history.slice(-14);
-
-    const labels = last14.map(d => {
-
-        const parts = d.date.split("-");
-
-        return parts.length === 3 ? `${parts[2]}.${parts[1]}` : d.date;
-
-    });
-
-    const data = last14.map(d => d.percent);
+    const { labels, data, label, isCount } = getChartData();
 
     if(window.achievementChartInstance){
 
         window.achievementChartInstance.data.labels = labels;
         window.achievementChartInstance.data.datasets[0].data = data;
+        window.achievementChartInstance.data.datasets[0].label = label;
+        window.achievementChartInstance.options.scales.y.max = isCount ? undefined : 100;
         window.achievementChartInstance.update();
 
         return;
@@ -1933,7 +2245,7 @@ function drawAchievementChart(){
         data: {
             labels: labels,
             datasets: [{
-                label: "% виконання за день",
+                label: label,
                 data: data,
                 borderColor: "#6366f1",
                 backgroundColor: "rgba(99,102,241,0.2)",
@@ -1954,7 +2266,7 @@ function drawAchievementChart(){
 
                 y: {
                     min: 0,
-                    max: 100,
+                    max: isCount ? undefined : 100,
                     ticks: { color: "#94a3b8" },
                     grid: { color: "rgba(148,163,184,0.15)" }
                 },
@@ -2002,6 +2314,15 @@ window.addEventListener("load", () => {
     try{ updateWeeklySummary(); }catch(e){ console.error("updateWeeklySummary:", e); }
     try{ updateLifeSpheres(); }catch(e){ console.error("updateLifeSpheres:", e); }
     try{ renderActivityHeatmap(); }catch(e){ console.error("renderActivityHeatmap:", e); }
+    try{ renderNotes(); }catch(e){ console.error("renderNotes:", e); }
+
+    try{
+
+        const chartPeriodSelect = document.getElementById("chartPeriodSelect");
+
+        if(chartPeriodSelect) chartPeriodSelect.value = chartPeriod;
+
+    }catch(e){ console.error("chartPeriodSelect init:", e); }
     try{ showCompanionGreeting(); }catch(e){ console.error("showCompanionGreeting:", e); }
 
 });

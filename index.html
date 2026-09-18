@@ -266,7 +266,7 @@ class="progressCircle"/>
 
 <p id="achievementText">
 
-Почни виконувати звички 🚀
+Почни виконувати завдання 🚀
 
 </p>
 
@@ -354,9 +354,9 @@ class="progressCircle"/>
 
 <section id="habits" class="page">
 
-<h2>Звички</h2>
+<h2>Завдання</h2>
 
-<input id="habitInput" placeholder="Нова звичка">
+<input id="habitInput" placeholder="Нове завдання">
 
 <select id="habitCategory">
 <option value="health">💪 Здоров'я</option>
@@ -367,7 +367,7 @@ class="progressCircle"/>
 
 <input
 id="habitSearch"
-placeholder="🔍 Пошук звички"
+placeholder="🔍 Пошук завдання"
 onkeyup="searchHabits()">
 
 <select id="habitSort" onchange="setHabitSort(this.value)">
@@ -448,7 +448,7 @@ onkeyup="searchGoals()">
 
 <div class="card">
 
-<h3>✅ Виконані звички</h3>
+<h3>✅ Виконані завдання</h3>
 
 <h1 id="habitCount">0</h1>
 
@@ -476,11 +476,13 @@ onkeyup="searchGoals()">
 
 <h2>Щоденник</h2>
 
-<textarea id="note"></textarea>
+<textarea id="noteInput" placeholder="Нова нотатка..."></textarea>
 
-<button type="button" onclick="saveNote()">
-Зберегти
+<button type="button" onclick="addNote()">
+Додати нотатку
 </button>
+
+<ul id="notesList"></ul>
 
 <hr>
 
@@ -508,7 +510,16 @@ onchange="importData(event)">
 
 <div class="card">
 
-<h3>📈 Продуктивність за 14 днів</h3>
+<h3>📈 Продуктивність</h3>
+
+<select id="chartPeriodSelect" onchange="setChartPeriod(this.value)">
+<option value="4h">Кожні 4 години</option>
+<option value="day">По днях</option>
+<option value="week">По тижнях</option>
+<option value="2weeks">По 2 тижнях</option>
+<option value="month">По місяцях</option>
+<option value="year">По роках</option>
+</select>
 
 <div class="chart-box">
 

@@ -150,13 +150,103 @@ async function sendJarvisMessage(){
 
     const thinkingBubble = addJarvisMessage("bot", "…");
 
-    const reply = await askGemini();
-
     jarvisChatHistory.pop();
+
+    const result = await askGemini();
+
+    if(result.rateLimited){
+
+        await handleJarvisRateLimit(thinkingBubble, result.waitSeconds);
+
+        return;
+
+    }
 
     if(thinkingBubble) thinkingBubble.remove();
 
-    addJarvisMessage("bot", reply);
+    addJarvisMessage("bot", result.text);
+
+}
+
+const jarvisRateLimitPhrases = [
+    "Ого, не гони 😅 дай Джарвізу перевести подих",
+    "Стоп-стоп 🛑 забагато питань підряд",
+    "Тихіше, тигре 🐯 безкоштовний ліміт скінчився",
+    "Ей, полегше 🙈 мені потрібна маленька перерва"
+];
+
+function formatJarvisWait(seconds){
+
+    if(seconds < 60){
+
+        return seconds+" сек";
+
+    }
+
+    const m = Math.floor(seconds/60);
+    const s = seconds%60;
+
+    return m+" хв"+(s>0 ? " "+s+" сек" : "");
+
+}
+
+async function handleJarvisRateLimit(bubble, waitSeconds){
+
+    if(!bubble) return;
+
+    let remaining = Math.min(Math.max(waitSeconds || 30, 3), 60);
+
+    const phrase = jarvisRateLimitPhrases[Math.floor(Math.random()*jarvisRateLimitPhrases.length)];
+
+    const container = document.getElementById("jarvisChatMessages");
+
+    function render(){
+
+        bubble.innerText = phrase+" — спробую сам ще раз через "+formatJarvisWait(remaining);
+
+        if(container) container.scrollTop = container.scrollHeight;
+
+    }
+
+    render();
+
+    await new Promise(resolve=>{
+
+        const tick = setInterval(()=>{
+
+            remaining--;
+
+            if(remaining<=0){
+
+                clearInterval(tick);
+
+                resolve();
+
+                return;
+
+            }
+
+            render();
+
+        },1000);
+
+    });
+
+    bubble.innerText = "Пробую ще раз... 🤖";
+
+    const retry = await askGemini();
+
+    if(retry.rateLimited){
+
+        bubble.innerText = "Все ще перевантажено 😩 спробуй, будь ласка, трохи згодом.";
+
+    }else{
+
+        bubble.innerText = retry.text;
+
+    }
+
+    jarvisChatHistory.push({ role:"bot", text: bubble.innerText });
 
 }
 
@@ -166,11 +256,11 @@ async function askGemini(retryCount){
 
     if(typeof geminiConfig === "undefined" || !geminiConfig.apiKey || geminiConfig.apiKey === "YOUR_GEMINI_API_KEY"){
 
-        return "Я поки не підключений до розумної розмови 🔑 Заповни файл gemini-config.js своїм безкоштовним ключем з aistudio.google.com/apikey";
+        return { text: "Я поки не підключений до розумної розмови 🔑 Заповни файл gemini-config.js своїм безкоштовним ключем з aistudio.google.com/apikey" };
 
     }
 
-    const systemContext = "Ти — Джарвіз, дружній компаньйон-помічник у застосунку SelfDev для саморозвитку та звичок. Відповідай коротко (1-3 речення), українською мовою, тепло і підтримуюче. Можеш давати практичні поради щодо звичок, цілей, продуктивності та мотивації.";
+    const systemContext = "Ти — Джарвіз, дружній компаньйон-помічник у застосунку SelfDev для саморозвитку та завдань. Відповідай коротко (1-3 речення), українською мовою, тепло і підтримуюче. Можеш давати практичні поради щодо завдань, цілей, продуктивності та мотивації.";
 
     const contents = jarvisChatHistory
         .filter(m => m.text !== "…")
@@ -200,7 +290,7 @@ async function askGemini(retryCount){
 
         if(data.candidates && data.candidates[0] && data.candidates[0].content){
 
-            return data.candidates[0].content.parts[0].text;
+            return { text: data.candidates[0].content.parts[0].text };
 
         }
 
@@ -216,27 +306,39 @@ async function askGemini(retryCount){
 
             }
 
+            const isRateLimited = data.error.code === 429 || data.error.status === "RESOURCE_EXHAUSTED";
+
+            if(isRateLimited){
+
+                const match = (data.error.message || "").match(/retry in ([\d.]+)s/i);
+
+                const waitSeconds = match ? Math.ceil(parseFloat(match[1])) : 30;
+
+                return { rateLimited: true, waitSeconds: waitSeconds };
+
+            }
+
             console.error("Gemini API error:", data.error);
 
-            return "Помилка від Gemini: "+data.error.message+" (код "+data.error.code+")";
+            return { text: "Помилка від Gemini: "+data.error.message+" (код "+data.error.code+")" };
 
         }
 
         if(data.candidates && data.candidates[0] && data.candidates[0].finishReason === "SAFETY"){
 
-            return "Це питання відхилено фільтром безпеки Gemini. Спробуй перефразувати.";
+            return { text: "Це питання відхилено фільтром безпеки Gemini. Спробуй перефразувати." };
 
         }
 
         console.error("Gemini response (unexpected format):", data);
 
-        return "Хм, отримав дивну відповідь від Gemini 🤔 Подробиці в консолі браузера (F12).";
+        return { text: "Хм, отримав дивну відповідь від Gemini 🤔 Подробиці в консолі браузера (F12)." };
 
     }catch(e){
 
         console.error("Gemini error:", e);
 
-        return "Не можу зараз відповісти — перевір інтернет-з'єднання 📡";
+        return { text: "Не можу зараз відповісти — перевір інтернет-з'єднання 📡" };
 
     }
 

@@ -2422,6 +2422,48 @@ function disableNotifications(){
 
 }
 
+function playNotificationSound(){
+
+    try{
+
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+        if(!AudioContextClass) return;
+
+        const ctx = new AudioContextClass();
+        const now = ctx.currentTime;
+
+        function tone(freq, start, duration, gain){
+
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+
+            osc.type = "sine";
+            osc.frequency.value = freq;
+
+            gainNode.gain.setValueAtTime(0, now+start);
+            gainNode.gain.linearRampToValueAtTime(gain, now+start+0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now+start+duration);
+
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+
+            osc.start(now+start);
+            osc.stop(now+start+duration+0.05);
+
+        }
+
+        tone(1046.5, 0, 0.15, 0.25);
+        tone(1568, 0.1, 0.25, 0.2);
+
+    }catch(e){
+
+        console.error("Notification sound:", e);
+
+    }
+
+}
+
 function checkReminder(){
 
     if(!notifyEnabled) return;
@@ -2436,7 +2478,7 @@ function checkReminder(){
 
     const today = now.toLocaleDateString();
 
-    if(current === notifyTime && lastNotifiedDate !== today){
+    if(current >= notifyTime && lastNotifiedDate !== today){
 
         const remaining =
             habits.filter(h=>!h.done).length +
@@ -2445,6 +2487,8 @@ function checkReminder(){
         const text = remaining > 0
             ? `Сьогодні залишилось ${remaining} незавершених завдань 💪`
             : "Усі завдання на сьогодні виконано! 🎉";
+
+        playNotificationSound();
 
         if("serviceWorker" in navigator){
 

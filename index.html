@@ -440,6 +440,11 @@ onkeyup="searchGoals()">
 <button type="button" onclick="startTimer()">▶️ Старт</button>
 <button type="button" onclick="resetTimer()">🔄 Скинути</button>
 
+<label style="display:flex;align-items:center;gap:10px;margin-top:20px;cursor:pointer">
+<input type="checkbox" id="pomodoroNotifyToggle" checked onchange="savePomodoroNotifyToggle(this.checked)" style="width:auto">
+🔔 Сповіщати про завершення
+</label>
+
 </section>
 
 <section id="stats" class="page">
@@ -545,12 +550,20 @@ onchange="importData(event)">
 
 <input type="time" id="notifyTime" value="09:00">
 
+<label>🔊 Гучність звуку</label>
+
+<input type="range" id="notifyVolume" min="0" max="100" value="70" oninput="saveNotifyVolume(this.value)">
+
 <button type="button" onclick="enableNotifications()">
 🔔 Увімкнути
 </button>
 
 <button type="button" onclick="disableNotifications()">
 🔕 Вимкнути
+</button>
+
+<button type="button" onclick="sendTestNotification()">
+🧪 Тестове сповіщення зараз
 </button>
 
 <p style="margin-top:15px;font-size:14px;opacity:.7">

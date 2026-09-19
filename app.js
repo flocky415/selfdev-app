@@ -1515,7 +1515,32 @@ xp+=20;
 
 updateLevel();
 
-alert("🎉 Pomodoro завершено!");
+showToast("🎉 Pomodoro завершено! +20 XP");
+
+if(pomodoroNotify && "Notification" in window && Notification.permission === "granted"){
+
+    playNotificationSound();
+
+    const pomodoroText = "🍅 Pomodoro завершено! +20 XP";
+
+    if("serviceWorker" in navigator){
+
+        navigator.serviceWorker.ready.then(reg=>{
+
+            reg.showNotification("SelfDev", {
+                body: pomodoroText,
+                icon: "icon-192.png"
+            });
+
+        });
+
+    }else{
+
+        new Notification("SelfDev", { body: pomodoroText });
+
+    }
+
+}
 
 timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
 
@@ -2340,6 +2365,9 @@ navigator.serviceWorker.register("sw.js");
 // ----------------
 
 let notifyEnabled = localStorage.getItem("notifyEnabled") === "true";
+let notifyVolume = Number(localStorage.getItem("notifyVolume"));
+if(isNaN(notifyVolume)) notifyVolume = 70;
+let pomodoroNotify = localStorage.getItem("pomodoroNotify") !== "false";
 let notifyTime = localStorage.getItem("notifyTime") || "09:00";
 let lastNotifiedDate = localStorage.getItem("lastNotifiedDate") || "";
 
@@ -2430,6 +2458,10 @@ function playNotificationSound(){
 
         if(!AudioContextClass) return;
 
+        const volumeScale = notifyVolume/100;
+
+        if(volumeScale <= 0) return;
+
         const ctx = new AudioContextClass();
         const now = ctx.currentTime;
 
@@ -2442,7 +2474,7 @@ function playNotificationSound(){
             osc.frequency.value = freq;
 
             gainNode.gain.setValueAtTime(0, now+start);
-            gainNode.gain.linearRampToValueAtTime(gain, now+start+0.02);
+            gainNode.gain.linearRampToValueAtTime(gain*volumeScale, now+start+0.02);
             gainNode.gain.exponentialRampToValueAtTime(0.001, now+start+duration);
 
             osc.connect(gainNode);
@@ -2459,6 +2491,85 @@ function playNotificationSound(){
     }catch(e){
 
         console.error("Notification sound:", e);
+
+    }
+
+}
+
+function saveNotifyVolume(value){
+
+    notifyVolume = Number(value);
+
+    localStorage.setItem("notifyVolume", notifyVolume);
+
+}
+
+function savePomodoroNotifyToggle(checked){
+
+    pomodoroNotify = checked;
+
+    localStorage.setItem("pomodoroNotify", checked);
+
+}
+
+function sendTestNotification(){
+
+    if(!("Notification" in window)){
+
+        showToast("🚫 Браузер не підтримує сповіщення");
+
+        return;
+
+    }
+
+    if(Notification.permission !== "granted"){
+
+        showToast("🚫 Спочатку натисни 'Увімкнути' і дай дозвіл браузеру");
+
+        return;
+
+    }
+
+    playNotificationSound();
+
+    const text = "Це тестове сповіщення 🧪 Якщо бачиш його — все працює!";
+
+    if("serviceWorker" in navigator){
+
+        navigator.serviceWorker.ready.then(reg=>{
+
+            reg.showNotification("SelfDev", {
+                body: text,
+                icon: "icon-192.png"
+            }).then(()=>{
+
+                showToast("✅ Сповіщення відправлено — перевір область системних сповіщень");
+
+            }).catch(e=>{
+
+                console.error("showNotification error:", e);
+
+                showToast("🚫 Помилка показу сповіщення: "+e.message);
+
+            });
+
+        });
+
+    }else{
+
+        try{
+
+            new Notification("SelfDev", { body: text });
+
+            showToast("✅ Сповіщення відправлено");
+
+        }catch(e){
+
+            console.error("Notification error:", e);
+
+            showToast("🚫 Помилка: "+e.message);
+
+        }
 
     }
 
@@ -2522,6 +2633,14 @@ window.addEventListener("load", () => {
     const notifyTimeInput = document.getElementById("notifyTime");
 
     if(notifyTimeInput) notifyTimeInput.value = notifyTime;
+
+    const notifyVolumeInput = document.getElementById("notifyVolume");
+
+    if(notifyVolumeInput) notifyVolumeInput.value = notifyVolume;
+
+    const pomodoroNotifyToggle = document.getElementById("pomodoroNotifyToggle");
+
+    if(pomodoroNotifyToggle) pomodoroNotifyToggle.checked = pomodoroNotify;
 
     updateNotifyStatus();
 

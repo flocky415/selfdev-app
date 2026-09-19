@@ -1217,6 +1217,12 @@ if(typeof updateJarvis3DAccessory === "function"){
 
 }
 
+if(typeof renderJarvisSkinPicker === "function"){
+
+    renderJarvisSkinPicker();
+
+}
+
 }
 
 function showCompanionGreeting(){

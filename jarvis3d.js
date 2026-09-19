@@ -5,9 +5,21 @@
 
 let jarvisScene, jarvisCamera, jarvisRenderer;
 let jarvisBody, jarvisEye, jarvisEyeWhite;
+let jarvisArmL, jarvisArmR;
 let jarvisAccessory = null;
 let jarvisClock = 0;
 let jarvisSpinBoost = 0;
+
+const jarvisSkins = [
+    { id:"classic", name:"Класичний", color:0xffd93d, unlockLevel:1 },
+    { id:"blue", name:"Синій", color:0x38bdf8, unlockLevel:2 },
+    { id:"green", name:"Зелений", color:0x4ade80, unlockLevel:4 },
+    { id:"purple", name:"Фіолетовий", color:0xa78bfa, unlockLevel:7 },
+    { id:"pink", name:"Рожевий", color:0xf472b6, unlockLevel:10 },
+    { id:"midnight", name:"Опівнічний", color:0x475569, unlockLevel:14 }
+];
+
+let jarvisSkinId = localStorage.getItem("jarvisSkin") || "classic";
 
 function getJarvisSize(){
 
@@ -98,18 +110,19 @@ function initJarvis3D(){
     const armGeo = new THREE.CapsuleGeometry(0.08, 0.3, 4, 8);
     const armMat = new THREE.MeshStandardMaterial({ color: 0xffd93d });
 
-    const armL = new THREE.Mesh(armGeo, armMat);
-    armL.position.set(-0.62, -0.05, 0);
-    armL.rotation.z = Math.PI/2.3;
-    jarvisBody.add(armL);
+    jarvisArmL = new THREE.Mesh(armGeo, armMat);
+    jarvisArmL.position.set(-0.62, -0.05, 0);
+    jarvisArmL.rotation.z = Math.PI/2.3;
+    jarvisBody.add(jarvisArmL);
 
-    const armR = new THREE.Mesh(armGeo, armMat);
-    armR.position.set(0.62, -0.05, 0);
-    armR.rotation.z = -Math.PI/2.3;
-    jarvisBody.add(armR);
+    jarvisArmR = new THREE.Mesh(armGeo, armMat.clone());
+    jarvisArmR.position.set(0.62, -0.05, 0);
+    jarvisArmR.rotation.z = -Math.PI/2.3;
+    jarvisBody.add(jarvisArmR);
 
     updateJarvis3DMood();
     updateJarvis3DAccessory();
+    applyJarvisSkin();
 
     animateJarvis3D();
 
@@ -205,10 +218,32 @@ function updateJarvis3DAccessory(){
 
     if(lvl>=11){
 
-        const crownGeo = new THREE.ConeGeometry(0.4, 0.45, 5);
-        const crownMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xfacc15, emissiveIntensity: 0.6 });
-        jarvisAccessory = new THREE.Mesh(crownGeo, crownMat);
-        jarvisAccessory.position.set(0, 1.05, 0);
+        const crownGroup = new THREE.Group();
+
+        const crownMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xfacc15, emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.3 });
+
+        const baseGeo = new THREE.TorusGeometry(0.35, 0.05, 8, 24);
+        const base = new THREE.Mesh(baseGeo, crownMat);
+        base.rotation.x = Math.PI/2;
+        crownGroup.add(base);
+
+        const spikeCount = 5;
+        const spikeGeo = new THREE.ConeGeometry(0.08, 0.22, 6);
+
+        for(let i=0;i<spikeCount;i++){
+
+            const angle = (i/spikeCount)*Math.PI*2;
+            const spike = new THREE.Mesh(spikeGeo, crownMat);
+
+            spike.position.set(Math.cos(angle)*0.35, 0.11, Math.sin(angle)*0.35);
+
+            crownGroup.add(spike);
+
+        }
+
+        crownGroup.position.set(0, 1.0, 0);
+
+        jarvisAccessory = crownGroup;
         jarvisScene.add(jarvisAccessory);
 
     }else if(lvl>=6){
@@ -231,6 +266,85 @@ function updateJarvis3DAccessory(){
 
 }
 
+function applyJarvisSkin(){
+
+    if(!jarvisBody) return;
+
+    const skin = jarvisSkins.find(s=>s.id===jarvisSkinId) || jarvisSkins[0];
+
+    jarvisBody.material.color.setHex(skin.color);
+
+    if(jarvisArmL) jarvisArmL.material.color.setHex(skin.color);
+    if(jarvisArmR) jarvisArmR.material.color.setHex(skin.color);
+
+}
+
+function selectJarvisSkin(id){
+
+    const skin = jarvisSkins.find(s=>s.id===id);
+
+    if(!skin) return;
+
+    const lvl = typeof level !== "undefined" ? level : 1;
+
+    if(lvl < skin.unlockLevel){
+
+        showToast("🔒 Розблокується на рівні "+skin.unlockLevel);
+
+        return;
+
+    }
+
+    jarvisSkinId = id;
+
+    localStorage.setItem("jarvisSkin", id);
+
+    applyJarvisSkin();
+
+    renderJarvisSkinPicker();
+
+    showToast("✨ Скін застосовано: "+skin.name);
+
+}
+
+function renderJarvisSkinPicker(){
+
+    const container = document.getElementById("jarvisSkinPicker");
+
+    if(!container) return;
+
+    container.innerHTML = "";
+
+    const lvl = typeof level !== "undefined" ? level : 1;
+
+    jarvisSkins.forEach(skin=>{
+
+        const unlocked = lvl >= skin.unlockLevel;
+
+        const div = document.createElement("div");
+
+        div.className = "skin-swatch" + (skin.id===jarvisSkinId ? " active" : "") + (unlocked ? "" : " locked");
+        div.style.background = "#"+skin.color.toString(16).padStart(6,"0");
+
+        if(unlocked){
+
+            div.innerText = skin.id===jarvisSkinId ? "✓" : "";
+            div.onclick = ()=> selectJarvisSkin(skin.id);
+            div.title = skin.name;
+
+        }else{
+
+            div.innerText = "🔒";
+            div.title = skin.name+" — рівень "+skin.unlockLevel;
+
+        }
+
+        container.appendChild(div);
+
+    });
+
+}
+
 try{
 
     if(document.readyState === "loading"){
@@ -246,5 +360,23 @@ try{
 }catch(e){
 
     console.error("Jarvis 3D init:", e);
+
+}
+
+try{
+
+    if(document.readyState === "loading"){
+
+        document.addEventListener("DOMContentLoaded", renderJarvisSkinPicker);
+
+    }else{
+
+        renderJarvisSkinPicker();
+
+    }
+
+}catch(e){
+
+    console.error("Jarvis skin picker init:", e);
 
 }

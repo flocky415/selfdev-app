@@ -1456,6 +1456,54 @@ filter:grayscale(1);
 
 }
 
+.skin-picker{
+
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+margin-top:10px;
+
+}
+
+.skin-swatch{
+
+width:44px;
+height:44px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:16px;
+font-weight:bold;
+color:white;
+cursor:pointer;
+border:3px solid transparent;
+transition:.2s;
+text-shadow:0 1px 3px rgba(0,0,0,.6);
+
+}
+
+.skin-swatch:not(.locked):hover{
+
+transform:scale(1.1);
+
+}
+
+.skin-swatch.active{
+
+border-color:#fff;
+box-shadow:0 0 0 2px #6366f1;
+
+}
+
+.skin-swatch.locked{
+
+opacity:.45;
+filter:grayscale(.6);
+cursor:not-allowed;
+
+}
+
 .friend-code-box{
 
 background:#0f172a;

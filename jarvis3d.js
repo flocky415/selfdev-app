@@ -21,6 +21,23 @@ const jarvisSkins = [
 
 let jarvisSkinId = localStorage.getItem("jarvisSkin") || "classic";
 
+const jarvisMovements = [
+    { id:"calm", name:"Спокійний", unlockLevel:1, bobSpeed:0.5, bobAmplitude:0.04, rotSpeed:0.3, rotAmplitude:0.2 },
+    { id:"classic", name:"Класичний", unlockLevel:1, bobSpeed:1, bobAmplitude:0.08, rotSpeed:0.5, rotAmplitude:0.4 },
+    { id:"energetic", name:"Енергійний", unlockLevel:3, bobSpeed:1.8, bobAmplitude:0.12, rotSpeed:1, rotAmplitude:0.6 },
+    { id:"bouncy", name:"Стрибучий", unlockLevel:6, bobSpeed:2.5, bobAmplitude:0.18, rotSpeed:0.6, rotAmplitude:0.3 },
+    { id:"dance", name:"Танцювальний", unlockLevel:9, bobSpeed:1.2, bobAmplitude:0.1, rotSpeed:1.5, rotAmplitude:0.8 },
+    { id:"hyper", name:"Гіперактивний", unlockLevel:13, bobSpeed:3, bobAmplitude:0.15, rotSpeed:2.2, rotAmplitude:1.0 }
+];
+
+let jarvisMovementId = localStorage.getItem("jarvisMovement") || "classic";
+
+function getCurrentMovement(){
+
+    return jarvisMovements.find(m=>m.id===jarvisMovementId) || jarvisMovements[1];
+
+}
+
 function getJarvisSize(){
 
     return window.innerWidth >= 900 ? 88 : 52;
@@ -154,8 +171,10 @@ function animateJarvis3D(){
 
     if(jarvisBody){
 
-        jarvisBody.rotation.y = Math.sin(jarvisClock*0.5)*0.4 + jarvisSpinBoost*10;
-        jarvisBody.position.y = Math.sin(jarvisClock)*0.08;
+        const m = getCurrentMovement();
+
+        jarvisBody.rotation.y = Math.sin(jarvisClock*m.rotSpeed)*m.rotAmplitude + jarvisSpinBoost*10;
+        jarvisBody.position.y = Math.sin(jarvisClock*m.bobSpeed)*m.bobAmplitude;
 
     }
 
@@ -345,6 +364,68 @@ function renderJarvisSkinPicker(){
 
 }
 
+function selectJarvisMovement(id){
+
+    const m = jarvisMovements.find(x=>x.id===id);
+
+    if(!m) return;
+
+    const lvl = typeof level !== "undefined" ? level : 1;
+
+    if(lvl < m.unlockLevel){
+
+        showToast("🔒 Розблокується на рівні "+m.unlockLevel);
+
+        return;
+
+    }
+
+    jarvisMovementId = id;
+
+    localStorage.setItem("jarvisMovement", id);
+
+    renderJarvisMovementPicker();
+
+    showToast("💃 Рух змінено: "+m.name);
+
+}
+
+function renderJarvisMovementPicker(){
+
+    const container = document.getElementById("jarvisMovementPicker");
+
+    if(!container) return;
+
+    container.innerHTML = "";
+
+    const lvl = typeof level !== "undefined" ? level : 1;
+
+    jarvisMovements.forEach(m=>{
+
+        const unlocked = lvl >= m.unlockLevel;
+
+        const chip = document.createElement("div");
+
+        chip.className = "movement-chip" + (m.id===jarvisMovementId ? " active" : "") + (unlocked ? "" : " locked");
+
+        if(unlocked){
+
+            chip.innerText = m.name;
+            chip.onclick = ()=> selectJarvisMovement(m.id);
+
+        }else{
+
+            chip.innerText = "🔒 "+m.name;
+            chip.title = "Рівень "+m.unlockLevel;
+
+        }
+
+        container.appendChild(chip);
+
+    });
+
+}
+
 try{
 
     if(document.readyState === "loading"){
@@ -378,5 +459,23 @@ try{
 }catch(e){
 
     console.error("Jarvis skin picker init:", e);
+
+}
+
+try{
+
+    if(document.readyState === "loading"){
+
+        document.addEventListener("DOMContentLoaded", renderJarvisMovementPicker);
+
+    }else{
+
+        renderJarvisMovementPicker();
+
+    }
+
+}catch(e){
+
+    console.error("Jarvis movement picker init:", e);
 
 }

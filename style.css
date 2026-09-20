@@ -1504,6 +1504,47 @@ cursor:not-allowed;
 
 }
 
+.movement-picker{
+
+display:flex;
+gap:8px;
+flex-wrap:wrap;
+
+}
+
+.movement-chip{
+
+padding:8px 14px;
+border-radius:20px;
+background:#334155;
+font-size:13px;
+font-weight:600;
+cursor:pointer;
+transition:.2s;
+white-space:nowrap;
+
+}
+
+.movement-chip:hover:not(.locked){
+
+background:#475569;
+
+}
+
+.movement-chip.active{
+
+background:#6366f1;
+color:white;
+
+}
+
+.movement-chip.locked{
+
+opacity:.45;
+cursor:not-allowed;
+
+}
+
 .friend-code-box{
 
 background:#0f172a;

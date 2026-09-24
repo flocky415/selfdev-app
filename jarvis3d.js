@@ -6,6 +6,8 @@
 let jarvisScene, jarvisCamera, jarvisRenderer;
 let jarvisBody, jarvisEye, jarvisEyeWhite;
 let jarvisArmL, jarvisArmR;
+let jarvisLegL, jarvisLegR;
+let jarvisEyeBaseScaleY = 1;
 let jarvisAccessory = null;
 let jarvisClock = 0;
 let jarvisSpinBoost = 0;
@@ -137,9 +139,22 @@ function initJarvis3D(){
     jarvisArmR.rotation.z = -Math.PI/2.3;
     jarvisBody.add(jarvisArmR);
 
+    // Маленькі ніжки
+    const legGeo = new THREE.CapsuleGeometry(0.09, 0.22, 4, 8);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0xffd93d });
+
+    jarvisLegL = new THREE.Mesh(legGeo, legMat);
+    jarvisLegL.position.set(-0.22, -0.92, 0);
+    jarvisBody.add(jarvisLegL);
+
+    jarvisLegR = new THREE.Mesh(legGeo, legMat.clone());
+    jarvisLegR.position.set(0.22, -0.92, 0);
+    jarvisBody.add(jarvisLegR);
+
     updateJarvis3DMood();
     updateJarvis3DAccessory();
     applyJarvisSkin();
+    applyJarvisCostume();
 
     animateJarvis3D();
 
@@ -169,12 +184,49 @@ function animateJarvis3D(){
 
     }
 
-    if(jarvisBody){
+    const m = getCurrentMovement();
 
-        const m = getCurrentMovement();
+    if(jarvisBody){
 
         jarvisBody.rotation.y = Math.sin(jarvisClock*m.rotSpeed)*m.rotAmplitude + jarvisSpinBoost*10;
         jarvisBody.position.y = Math.sin(jarvisClock*m.bobSpeed)*m.bobAmplitude;
+
+    }
+
+    if(jarvisArmL && jarvisArmR){
+
+        const armSwing = Math.sin(jarvisClock*m.rotSpeed*1.6) * (0.18 + m.rotAmplitude*0.35);
+
+        jarvisArmL.rotation.z = Math.PI/2.3 + armSwing;
+        jarvisArmR.rotation.z = -Math.PI/2.3 - armSwing;
+
+    }
+
+    if(jarvisLegL && jarvisLegR){
+
+        const legSwing = Math.sin(jarvisClock*m.rotSpeed*1.6) * (0.1 + m.rotAmplitude*0.2);
+
+        jarvisLegL.rotation.x = legSwing;
+        jarvisLegR.rotation.x = -legSwing;
+
+    }
+
+    if(jarvisEyeWhite){
+
+        const blinkCycle = jarvisClock % 4.5;
+
+        if(blinkCycle > 4.3){
+
+            const blinkProgress = (blinkCycle-4.3)/0.2;
+            const blinkScale = Math.abs(Math.sin(blinkProgress*Math.PI));
+
+            jarvisEyeWhite.scale.y = jarvisEyeBaseScaleY * (1 - blinkScale*0.85);
+
+        }else{
+
+            jarvisEyeWhite.scale.y = jarvisEyeBaseScaleY;
+
+        }
 
     }
 
@@ -204,19 +256,19 @@ function updateJarvis3DMood(){
 
         jarvisEye.material.emissive.set(0xfacc15);
         jarvisEye.material.emissiveIntensity = 0.8;
-        jarvisEyeWhite.scale.set(1,1,1);
+        jarvisEyeBaseScaleY = 1;
 
     }else if(mood === "mood-sleepy"){
 
         jarvisEye.material.emissive.set(0x475569);
         jarvisEye.material.emissiveIntensity = 0.2;
-        jarvisEyeWhite.scale.set(1,0.4,1);
+        jarvisEyeBaseScaleY = 0.4;
 
     }else{
 
         jarvisEye.material.emissive.set(0x0f172a);
         jarvisEye.material.emissiveIntensity = 0.3;
-        jarvisEyeWhite.scale.set(1,1,1);
+        jarvisEyeBaseScaleY = 1;
 
     }
 
@@ -228,7 +280,7 @@ function updateJarvis3DAccessory(){
 
     if(jarvisAccessory){
 
-        jarvisScene.remove(jarvisAccessory);
+        jarvisBody.remove(jarvisAccessory);
         jarvisAccessory = null;
 
     }
@@ -263,7 +315,7 @@ function updateJarvis3DAccessory(){
         crownGroup.position.set(0, 1.0, 0);
 
         jarvisAccessory = crownGroup;
-        jarvisScene.add(jarvisAccessory);
+        jarvisBody.add(jarvisAccessory);
 
     }else if(lvl>=6){
 
@@ -271,7 +323,7 @@ function updateJarvis3DAccessory(){
         const ringMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x8b5cf6, emissiveIntensity: 0.4 });
         jarvisAccessory = new THREE.Mesh(ringGeo, ringMat);
         jarvisAccessory.rotation.x = Math.PI/2.2;
-        jarvisScene.add(jarvisAccessory);
+        jarvisBody.add(jarvisAccessory);
 
     }else if(lvl>=3){
 
@@ -279,7 +331,7 @@ function updateJarvis3DAccessory(){
         const ringMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x22c55e, emissiveIntensity: 0.3 });
         jarvisAccessory = new THREE.Mesh(ringGeo, ringMat);
         jarvisAccessory.rotation.x = Math.PI/2.2;
-        jarvisScene.add(jarvisAccessory);
+        jarvisBody.add(jarvisAccessory);
 
     }
 
@@ -295,6 +347,8 @@ function applyJarvisSkin(){
 
     if(jarvisArmL) jarvisArmL.material.color.setHex(skin.color);
     if(jarvisArmR) jarvisArmR.material.color.setHex(skin.color);
+    if(jarvisLegL) jarvisLegL.material.color.setHex(skin.color);
+    if(jarvisLegR) jarvisLegR.material.color.setHex(skin.color);
 
 }
 
@@ -426,6 +480,204 @@ function renderJarvisMovementPicker(){
 
 }
 
+// ----------------
+// Костюми — окремо від кольорів
+// ----------------
+
+const jarvisCostumes = [
+    { id:"none", name:"Без костюма", unlockLevel:1 },
+    { id:"pirate", name:"🏴‍☠️ Пірат", unlockLevel:5 },
+    { id:"dog", name:"🐶 Песик", unlockLevel:8 },
+    { id:"cat", name:"🐱 Котик", unlockLevel:12 }
+];
+
+let jarvisCostumeId = localStorage.getItem("jarvisCostume") || "none";
+let jarvisCostumeGroup = null;
+
+function buildPirateCostume(){
+
+    const group = new THREE.Group();
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+
+    const brimGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.06, 16);
+    const brim = new THREE.Mesh(brimGeo, hatMat);
+    brim.position.set(0, 1.02, 0);
+    group.add(brim);
+
+    const topGeo = new THREE.SphereGeometry(0.32, 16, 8, 0, Math.PI*2, 0, Math.PI/2);
+    const top = new THREE.Mesh(topGeo, hatMat);
+    top.position.set(0, 1.05, 0);
+    group.add(top);
+
+    const patchGeo = new THREE.CircleGeometry(0.15, 16);
+    const patchMat = new THREE.MeshStandardMaterial({ color: 0x000000, side: THREE.DoubleSide });
+    const patch = new THREE.Mesh(patchGeo, patchMat);
+    patch.position.set(-0.15, 0.28, 0.92);
+    group.add(patch);
+
+    return group;
+
+}
+
+function buildDogCostume(){
+
+    const group = new THREE.Group();
+    const earMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
+
+    const earGeo = new THREE.SphereGeometry(0.3, 16, 16);
+
+    const earL = new THREE.Mesh(earGeo, earMat);
+    earL.scale.set(0.5, 1.4, 0.45);
+    earL.position.set(-0.72, 0.3, 0.1);
+    group.add(earL);
+
+    const earR = new THREE.Mesh(earGeo, earMat.clone());
+    earR.scale.set(0.5, 1.4, 0.45);
+    earR.position.set(0.72, 0.3, 0.1);
+    group.add(earR);
+
+    const headbandGeo = new THREE.TorusGeometry(0.65, 0.04, 8, 24);
+    const headbandMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
+    const headband = new THREE.Mesh(headbandGeo, headbandMat);
+    headband.rotation.x = Math.PI/2;
+    headband.position.set(0, 0.85, 0);
+    group.add(headband);
+
+    const noseGeo = new THREE.SphereGeometry(0.11, 12, 12);
+    const noseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+    const nose = new THREE.Mesh(noseGeo, noseMat);
+    nose.position.set(0, -0.1, 1.0);
+    group.add(nose);
+
+    return group;
+
+}
+
+function buildCatCostume(){
+
+    const group = new THREE.Group();
+    const earMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6 });
+
+    const earGeo = new THREE.ConeGeometry(0.22, 0.38, 4);
+
+    const earL = new THREE.Mesh(earGeo, earMat);
+    earL.position.set(-0.42, 0.88, 0);
+    earL.rotation.z = -0.25;
+    group.add(earL);
+
+    const earR = new THREE.Mesh(earGeo, earMat.clone());
+    earR.position.set(0.42, 0.88, 0);
+    earR.rotation.z = 0.25;
+    group.add(earR);
+
+    const noseGeo = new THREE.ConeGeometry(0.06, 0.09, 6);
+    const noseMat = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
+    const nose = new THREE.Mesh(noseGeo, noseMat);
+    nose.position.set(0, -0.1, 1.0);
+    nose.rotation.x = Math.PI/2;
+    group.add(nose);
+
+    return group;
+
+}
+
+function applyJarvisCostume(){
+
+    if(!jarvisBody) return;
+
+    if(jarvisCostumeGroup){
+
+        jarvisBody.remove(jarvisCostumeGroup);
+        jarvisCostumeGroup = null;
+
+    }
+
+    if(jarvisCostumeId === "pirate"){
+
+        jarvisCostumeGroup = buildPirateCostume();
+
+    }else if(jarvisCostumeId === "dog"){
+
+        jarvisCostumeGroup = buildDogCostume();
+
+    }else if(jarvisCostumeId === "cat"){
+
+        jarvisCostumeGroup = buildCatCostume();
+
+    }
+
+    if(jarvisCostumeGroup){
+
+        jarvisBody.add(jarvisCostumeGroup);
+
+    }
+
+}
+
+function selectJarvisCostume(id){
+
+    const costume = jarvisCostumes.find(c=>c.id===id);
+
+    if(!costume) return;
+
+    const lvl = typeof level !== "undefined" ? level : 1;
+
+    if(lvl < costume.unlockLevel){
+
+        showToast("🔒 Розблокується на рівні "+costume.unlockLevel);
+
+        return;
+
+    }
+
+    jarvisCostumeId = id;
+
+    localStorage.setItem("jarvisCostume", id);
+
+    applyJarvisCostume();
+
+    renderJarvisCostumePicker();
+
+    showToast("🎭 Костюм змінено: "+costume.name);
+
+}
+
+function renderJarvisCostumePicker(){
+
+    const container = document.getElementById("jarvisCostumePicker");
+
+    if(!container) return;
+
+    container.innerHTML = "";
+
+    const lvl = typeof level !== "undefined" ? level : 1;
+
+    jarvisCostumes.forEach(costume=>{
+
+        const unlocked = lvl >= costume.unlockLevel;
+
+        const chip = document.createElement("div");
+
+        chip.className = "movement-chip" + (costume.id===jarvisCostumeId ? " active" : "") + (unlocked ? "" : " locked");
+
+        if(unlocked){
+
+            chip.innerText = costume.name;
+            chip.onclick = ()=> selectJarvisCostume(costume.id);
+
+        }else{
+
+            chip.innerText = "🔒 "+costume.name;
+            chip.title = "Рівень "+costume.unlockLevel;
+
+        }
+
+        container.appendChild(chip);
+
+    });
+
+}
+
 try{
 
     if(document.readyState === "loading"){
@@ -477,5 +729,23 @@ try{
 }catch(e){
 
     console.error("Jarvis movement picker init:", e);
+
+}
+
+try{
+
+    if(document.readyState === "loading"){
+
+        document.addEventListener("DOMContentLoaded", renderJarvisCostumePicker);
+
+    }else{
+
+        renderJarvisCostumePicker();
+
+    }
+
+}catch(e){
+
+    console.error("Jarvis costume picker init:", e);
 
 }

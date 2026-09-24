@@ -16,6 +16,12 @@ let history = JSON.parse(localStorage.getItem("history")) || [];
 let notes = JSON.parse(localStorage.getItem("notes")) || [];
 let activityLog = JSON.parse(localStorage.getItem("activityLog")) || [];
 
+// Накопичувальна кількість виконань за весь час — рахує кожне виконання,
+// в тому числі повторне (наступного дня після скидання), а не лише
+// поточний стан чекбоксів (який щодня скидається на 0)
+let totalHabitCompletions = Number(localStorage.getItem("totalHabitCompletions")) || 0;
+let totalGoalCompletions = Number(localStorage.getItem("totalGoalCompletions")) || 0;
+
 // Міграція старої єдиної нотатки в новий список нотаток
 const legacyNote = localStorage.getItem("note");
 
@@ -58,12 +64,12 @@ let unlockedAchievements = JSON.parse(localStorage.getItem("unlockedAchievements
 let claimedAchievements = JSON.parse(localStorage.getItem("claimedAchievements")) || [];
 
 const achievementDefs = [
-    { name:"Перше виконане завдання", icon:"🎯", target:1, reward:20, progress: ()=> Math.min(habits.filter(h=>h.done).length,1), check: ()=> habits.filter(h=>h.done).length>=1 },
-    { name:"10 виконаних завдань", icon:"🔥", target:10, reward:40, progress: ()=> Math.min(habits.filter(h=>h.done).length,10), check: ()=> habits.filter(h=>h.done).length>=10 },
-    { name:"25 виконаних завдань", icon:"💪", target:25, reward:80, progress: ()=> Math.min(habits.filter(h=>h.done).length,25), check: ()=> habits.filter(h=>h.done).length>=25 },
-    { name:"Перша виконана ціль", icon:"🚩", target:1, reward:20, progress: ()=> Math.min(goals.filter(g=>g.done).length,1), check: ()=> goals.filter(g=>g.done).length>=1 },
-    { name:"5 виконаних цілей", icon:"🏆", target:5, reward:60, progress: ()=> Math.min(goals.filter(g=>g.done).length,5), check: ()=> goals.filter(g=>g.done).length>=5 },
-    { name:"10 виконаних цілей", icon:"💎", target:10, reward:100, progress: ()=> Math.min(goals.filter(g=>g.done).length,10), check: ()=> goals.filter(g=>g.done).length>=10 },
+    { name:"Перше виконане завдання", icon:"🎯", target:1, reward:20, progress: ()=> Math.min(totalHabitCompletions,1), check: ()=> totalHabitCompletions>=1 },
+    { name:"10 виконаних завдань", icon:"🔥", target:10, reward:40, progress: ()=> Math.min(totalHabitCompletions,10), check: ()=> totalHabitCompletions>=10 },
+    { name:"25 виконаних завдань", icon:"💪", target:25, reward:80, progress: ()=> Math.min(totalHabitCompletions,25), check: ()=> totalHabitCompletions>=25 },
+    { name:"Перша виконана ціль", icon:"🚩", target:1, reward:20, progress: ()=> Math.min(totalGoalCompletions,1), check: ()=> totalGoalCompletions>=1 },
+    { name:"5 виконаних цілей", icon:"🏆", target:5, reward:60, progress: ()=> Math.min(totalGoalCompletions,5), check: ()=> totalGoalCompletions>=5 },
+    { name:"10 виконаних цілей", icon:"💎", target:10, reward:100, progress: ()=> Math.min(totalGoalCompletions,10), check: ()=> totalGoalCompletions>=10 },
     { name:"Серія 7 днів", icon:"📅", target:7, reward:50, freezeReward:1, progress: ()=> Math.min(streak,7), check: ()=> streak>=7 },
     { name:"Серія 30 днів", icon:"🌟", target:30, reward:150, freezeReward:3, progress: ()=> Math.min(streak,30), check: ()=> streak>=30 },
     { name:"100 XP (Рівень 2)", icon:"⭐", target:2, reward:60, progress: ()=> Math.min(level,2), check: ()=> level>=2 },
@@ -99,7 +105,7 @@ function logActivity(){
 
 activityLog.push(Date.now());
 
-const cutoff = Date.now() - 90*86400000;
+const cutoff = Date.now() - 730*86400000;
 
 activityLog = activityLog.filter(ts => ts > cutoff);
 
@@ -658,7 +664,7 @@ list.appendChild(li);
 });
 
 document.getElementById("habitCount").innerText=
-habits.filter(h=>h.done).length;
+totalHabitCompletions;
 
 }
 
@@ -738,9 +744,8 @@ showToast("+10 XP 🎉");
 
 updateLevel();
 
-updateStats();
-
-checkAchievements();
+totalHabitCompletions++;
+localStorage.setItem("totalHabitCompletions", totalHabitCompletions);
 
 registerStreakActivity();
 
@@ -751,6 +756,8 @@ logActivity();
 save();
 updateHistory();
 renderHabits();
+updateStats();
+checkAchievements();
 updateDayProgress();
 
 if(willBeDone){
@@ -1015,6 +1022,9 @@ showToast("+25 XP 🏆");
 updateLevel();
 launchConfetti();
 
+totalGoalCompletions++;
+localStorage.setItem("totalGoalCompletions", totalGoalCompletions);
+
 registerStreakActivity();
 
 logActivity();
@@ -1229,6 +1239,12 @@ if(typeof renderJarvisMovementPicker === "function"){
 
 }
 
+if(typeof renderJarvisCostumePicker === "function"){
+
+    renderJarvisCostumePicker();
+
+}
+
 }
 
 function showCompanionGreeting(){
@@ -1273,15 +1289,12 @@ el.innerHTML =
 
 function updateStats(){
 
-const habitsDone=habits.filter(h=>h.done).length;
-const goalsDone=goals.filter(g=>g.done).length;
-
 const habit=document.getElementById("habitCount");
 const goal=document.getElementById("goalCount");
 
-animateNumber(habit, habitsDone);
+animateNumber(habit, totalHabitCompletions);
 
-animateNumber(goal, goalsDone);
+animateNumber(goal, totalGoalCompletions);
 
 renderStreakDisplay("streakCount");
 renderStreakDisplay("homeStreakDisplay");
@@ -1438,6 +1451,8 @@ save();
 
 renderHabits();
 updateStats();
+updateHistory();
+updateDayProgress();
 
 }
 
@@ -2104,6 +2119,31 @@ function getChartData(){
 
     const monthNames = ["Січ","Лют","Бер","Кві","Тра","Чер","Лип","Сер","Вер","Жов","Лис","Гру"];
 
+    if(chartPeriod === "1h"){
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+        const buckets = new Array(24).fill(0);
+        const labels = buckets.map((_, i) => String(i).padStart(2,"0")+"-"+String((i+1)%24).padStart(2,"0"));
+
+        activityLog.forEach(ts=>{
+
+            if(ts >= todayStart){
+
+                const hoursSinceMidnight = (ts - todayStart)/3600000;
+                const bucketIndex = Math.min(23, Math.floor(hoursSinceMidnight));
+
+                buckets[bucketIndex]++;
+
+            }
+
+        });
+
+        return { labels, data: buckets, label: "Виконано завдань", isCount: true };
+
+    }
+
     if(chartPeriod === "4h"){
 
         const now = new Date();
@@ -2139,11 +2179,18 @@ function getChartData(){
             const d = new Date(now.getTime() - i*86400000);
             const iso = d.toISOString().slice(0,10);
 
-            const entry = history.find(h=>h.date===iso);
-
-            last14.push({ date: iso, percent: entry ? entry.percent : 0 });
+            last14.push({ date: iso, count: 0 });
 
         }
+
+        activityLog.forEach(ts=>{
+
+            const iso = new Date(ts).toISOString().slice(0,10);
+            const day = last14.find(d=>d.date===iso);
+
+            if(day) day.count++;
+
+        });
 
         const labels = last14.map(d => {
 
@@ -2153,7 +2200,7 @@ function getChartData(){
 
         });
 
-        return { labels, data: last14.map(d=>d.percent), label: "% виконання за день", isCount: false };
+        return { labels, data: last14.map(d=>d.count), label: "Виконано завдань за день", isCount: true };
 
     }
 
@@ -2170,18 +2217,17 @@ function getChartData(){
             const end = new Date(Date.now() - i*daysPerBucket*86400000);
             const start = new Date(end.getTime() - (daysPerBucket-1)*86400000);
 
-            const startISO = start.toISOString().slice(0,10);
-            const endISO = end.toISOString().slice(0,10);
+            const startTs = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+            const endTs = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime() + 86400000;
 
-            const entries = history.filter(h=> h.date >= startISO && h.date <= endISO);
-            const avg = entries.length ? Math.round(entries.reduce((a,b)=>a+b.percent,0)/entries.length) : 0;
+            const count = activityLog.filter(ts => ts >= startTs && ts < endTs).length;
 
             labels.push(`${start.getDate()}.${start.getMonth()+1}`);
-            data.push(avg);
+            data.push(count);
 
         }
 
-        return { labels, data, label: chartPeriod==="week" ? "% виконання за тиждень" : "% виконання за 2 тижні", isCount: false };
+        return { labels, data, label: chartPeriod==="week" ? "Виконано завдань за тиждень" : "Виконано завдань за 2 тижні", isCount: true };
 
     }
 
@@ -2189,13 +2235,12 @@ function getChartData(){
 
         const grouped = {};
 
-        history.forEach(h=>{
+        activityLog.forEach(ts=>{
 
-            const monthKey = h.date.slice(0,7);
+            const d = new Date(ts);
+            const monthKey = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
 
-            if(!grouped[monthKey]) grouped[monthKey] = [];
-
-            grouped[monthKey].push(h.percent);
+            grouped[monthKey] = (grouped[monthKey] || 0) + 1;
 
         });
 
@@ -2209,15 +2254,9 @@ function getChartData(){
 
         });
 
-        const data = monthKeys.map(k=>{
+        const data = monthKeys.map(k=> grouped[k]);
 
-            const vals = grouped[k];
-
-            return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
-
-        });
-
-        return { labels, data, label: "% виконання за місяць", isCount: false };
+        return { labels, data, label: "Виконано завдань за місяць", isCount: true };
 
     }
 
@@ -2225,27 +2264,19 @@ function getChartData(){
 
         const grouped = {};
 
-        history.forEach(h=>{
+        activityLog.forEach(ts=>{
 
-            const yearKey = h.date.slice(0,4);
+            const yearKey = String(new Date(ts).getFullYear());
 
-            if(!grouped[yearKey]) grouped[yearKey] = [];
-
-            grouped[yearKey].push(h.percent);
+            grouped[yearKey] = (grouped[yearKey] || 0) + 1;
 
         });
 
         const yearKeys = Object.keys(grouped).sort();
 
-        const data = yearKeys.map(k=>{
+        const data = yearKeys.map(k=> grouped[k]);
 
-            const vals = grouped[k];
-
-            return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
-
-        });
-
-        return { labels: yearKeys, data, label: "% виконання за рік", isCount: false };
+        return { labels: yearKeys, data, label: "Виконано завдань за рік", isCount: true };
 
     }
 

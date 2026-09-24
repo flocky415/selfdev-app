@@ -272,6 +272,10 @@ class="progressCircle"/>
 
 <div id="jarvisMovementPicker" class="movement-picker"></div>
 
+<p style="opacity:.7;font-size:13px;margin:18px 0 8px">Костюм</p>
+
+<div id="jarvisCostumePicker" class="movement-picker"></div>
+
 <p style="opacity:.6;font-size:12px;margin-top:12px">Нові варіанти розблоковуються з рівнем</p>
 
 </div>
@@ -343,14 +347,6 @@ class="progressCircle"/>
 <div class="week-stat" style="grid-column:1/3"><b id="weekDiff">+0%</b><span>порівняно з мин. тижнем</span></div>
 
 </div>
-
-</div>
-
-<div class="card">
-
-<h3>🌳 Сфери життя</h3>
-
-<div id="lifeSpheresList"></div>
 
 </div>
 
@@ -531,9 +527,18 @@ onchange="importData(event)">
 
 <div class="card">
 
+<h3>🌳 Сфери життя</h3>
+
+<div id="lifeSpheresList"></div>
+
+</div>
+
+<div class="card">
+
 <h3>📈 Продуктивність</h3>
 
 <select id="chartPeriodSelect" onchange="setChartPeriod(this.value)">
+<option value="1h">Щогодини</option>
 <option value="4h">Кожні 4 години</option>
 <option value="day">По днях</option>
 <option value="week">По тижнях</option>

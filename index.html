@@ -436,9 +436,13 @@ onkeyup="searchGoals()">
 
 <h2>🍅 Pomodoro</h2>
 
-<div id="timerText">25:00</div>
+<div class="card">
 
-<label>🍅 Робота</label>
+<p style="opacity:.8;font-size:14px;margin-bottom:12px">Можна запустити кілька таймерів одночасно — кожен зі своєю назвою і часом</p>
+
+<input id="pomodoroLabel" placeholder="Назва (наприклад: Робота)" maxlength="30">
+
+<label style="margin-top:10px;display:block">⏱ Тривалість</label>
 
 <div class="time-control">
 <button type="button" onclick="changePomodoro(-1)">−</button>
@@ -448,14 +452,16 @@ onkeyup="searchGoals()">
 <button type="button" onclick="changePomodoro(1)">+</button>
 </div>
 
-<button type="button" onclick="savePomodoroTime()">💾 Зберегти</button>
-<button type="button" onclick="startTimer()">▶️ Старт</button>
-<button type="button" onclick="resetTimer()">🔄 Скинути</button>
+<button type="button" onclick="addPomodoroTimer()">➕ Додати таймер</button>
 
-<label style="display:flex;align-items:center;gap:10px;margin-top:20px;cursor:pointer">
+<label style="display:flex;align-items:center;gap:10px;margin-top:16px;cursor:pointer">
 <input type="checkbox" id="pomodoroNotifyToggle" checked onchange="savePomodoroNotifyToggle(this.checked)" style="width:auto">
 🔔 Сповіщати про завершення
 </label>
+
+</div>
+
+<div id="pomodoroList"></div>
 
 </section>
 
@@ -530,6 +536,16 @@ onchange="importData(event)">
 <h3>🌳 Сфери життя</h3>
 
 <div id="lifeSpheresList"></div>
+
+</div>
+
+<div class="card">
+
+<h3>🎲 Щоденні виклики</h3>
+
+<p style="opacity:.8;font-size:14px;margin-bottom:10px">Оновлюються щодня опівночі — виконані вчора звільняють місце новим</p>
+
+<div id="dailyChallengesList"></div>
 
 </div>
 

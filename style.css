@@ -1762,6 +1762,140 @@ border-radius:2px;
     font-size:22px;
 }
 
+.pomodoro-card{
+    background:#1e293b;
+    border-radius:16px;
+    padding:16px;
+    margin-top:12px;
+}
+
+.pomodoro-card.running{
+    box-shadow:0 0 0 2px #6366f1;
+}
+
+.pomodoro-card-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6px;
+}
+
+.pomodoro-remove{
+    background:none;
+    border:none;
+    color:inherit;
+    opacity:.5;
+    font-size:16px;
+    cursor:pointer;
+    padding:2px 6px;
+}
+
+.pomodoro-card-time{
+    font-size:36px;
+    font-weight:700;
+    text-align:center;
+    letter-spacing:1px;
+    margin:6px 0;
+}
+
+.pomodoro-progress{
+    height:6px;
+    border-radius:3px;
+    background:#334155;
+    overflow:hidden;
+    margin-bottom:12px;
+}
+
+.pomodoro-progress-fill{
+    height:100%;
+    background:#6366f1;
+    border-radius:3px;
+    transition:width 1s linear;
+}
+
+.pomodoro-card-actions{
+    display:flex;
+    gap:8px;
+}
+
+.pomodoro-card-actions button{
+    flex:1;
+    padding:10px;
+    border:none;
+    border-radius:10px;
+    font-size:14px;
+    cursor:pointer;
+    background:#334155;
+    color:inherit;
+}
+
+.light .pomodoro-card{
+    background:#f1f5f9;
+}
+
+.light .pomodoro-progress{
+    background:#e2e8f0;
+}
+
+.light .pomodoro-card-actions button{
+    background:#e2e8f0;
+}
+
+.challenge-card{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px;
+    border-radius:14px;
+    background:#1e293b;
+    margin-bottom:8px;
+}
+
+.challenge-card.ready{
+    background:#164e3f;
+}
+
+.challenge-card.claimed{
+    opacity:.55;
+}
+
+.challenge-icon{
+    font-size:24px;
+}
+
+.challenge-info{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+.challenge-info small{
+    opacity:.7;
+}
+
+.challenge-card button{
+    padding:8px 14px;
+    border:none;
+    border-radius:10px;
+    background:#22c55e;
+    color:#052e1a;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.challenge-lock,.challenge-done{
+    font-size:18px;
+    opacity:.7;
+}
+
+.light .challenge-card{
+    background:#f1f5f9;
+}
+
+.light .challenge-card.ready{
+    background:#dcfce7;
+}
+
 .more-menu{
     position:fixed;
     inset:0;

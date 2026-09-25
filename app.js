@@ -7,8 +7,6 @@ let streakFreezes = Number(localStorage.getItem("streakFreezes")) || 0;
 let lastStreakDate = localStorage.getItem("lastStreakDate") || "";
 let lastOpen = localStorage.getItem("lastOpen") || "";
 
-let pomodoroTime = Number(localStorage.getItem("pomodoroTime")) || 1500;
-let timer = pomodoroTime;
 
 let habits = JSON.parse(localStorage.getItem("habits")) || [];
 let goals = JSON.parse(localStorage.getItem("goals")) || [];
@@ -325,26 +323,456 @@ try{
     console.error("updateLevel init:", e);
 }
 
-let interval = null;
+// ----------------
+// Щоденні виклики — окремий, живий шар над постійними досягненнями.
+// Щодня опівночі набір скидається і формується новий (детерміновано
+// за датою, тож не перетасовується при кожному відкритті того самого дня).
+// ----------------
 
-function drawTimer(){
+let dailyStatsDate = localStorage.getItem("dailyStatsDate") || "";
+let habitsCompletedToday = Number(localStorage.getItem("habitsCompletedToday")) || 0;
+let goalsCompletedToday = Number(localStorage.getItem("goalsCompletedToday")) || 0;
+let pomodorosCompletedToday = Number(localStorage.getItem("pomodorosCompletedToday")) || 0;
 
-    const timerText = document.getElementById("timerText");
+function ensureDailyStatsFresh(){
 
-    if(!timerText) return;
+    const today = new Date().toISOString().slice(0,10);
 
-    const m = Math.floor(timer / 60);
-    const s = timer % 60;
+    if(dailyStatsDate === today) return;
 
-    timerText.innerText =
-    `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    dailyStatsDate = today;
+    habitsCompletedToday = 0;
+    goalsCompletedToday = 0;
+    pomodorosCompletedToday = 0;
+
+    localStorage.setItem("dailyStatsDate", today);
+    localStorage.setItem("habitsCompletedToday", "0");
+    localStorage.setItem("goalsCompletedToday", "0");
+    localStorage.setItem("pomodorosCompletedToday", "0");
+
+}
+
+const dailyChallengePool = [
+    { id:"habits1", icon:"✅", name:"Виконай 1 завдання", reward:15, target:1, get: ()=> habitsCompletedToday },
+    { id:"habits3", icon:"🔥", name:"Виконай 3 завдання", reward:30, target:3, get: ()=> habitsCompletedToday },
+    { id:"habits5", icon:"💪", name:"Виконай 5 завдань", reward:45, target:5, get: ()=> habitsCompletedToday },
+    { id:"goal1", icon:"🚩", name:"Заверши 1 ціль", reward:25, target:1, get: ()=> goalsCompletedToday },
+    { id:"goal2", icon:"🏆", name:"Заверши 2 цілі", reward:45, target:2, get: ()=> goalsCompletedToday },
+    { id:"pomodoro1", icon:"🍅", name:"Заверши 1 Pomodoro", reward:20, target:1, get: ()=> pomodorosCompletedToday },
+    { id:"pomodoro2", icon:"🍅", name:"Заверши 2 Pomodoro", reward:35, target:2, get: ()=> pomodorosCompletedToday },
+];
+
+let dailyChallengesDate = localStorage.getItem("dailyChallengesDate") || "";
+let dailyChallengesIds = JSON.parse(localStorage.getItem("dailyChallengesIds") || "[]");
+let dailyChallengesClaimed = JSON.parse(localStorage.getItem("dailyChallengesClaimed") || "[]");
+
+function pickDailyChallenges(){
+
+    const today = new Date().toISOString().slice(0,10);
+
+    let seed = 0;
+
+    for(let i=0;i<today.length;i++) seed += today.charCodeAt(i)*(i+1);
+
+    const pool = dailyChallengePool.slice();
+    const picked = [];
+
+    for(let i=0;i<3 && pool.length;i++){
+
+        seed = (seed*9301+49297) % 233280;
+
+        const idx = Math.floor((seed/233280)*pool.length);
+
+        picked.push(pool.splice(idx,1)[0]);
+
+    }
+
+    return picked.map(c=>c.id);
+
+}
+
+function ensureDailyChallengesFresh(){
+
+    const today = new Date().toISOString().slice(0,10);
+
+    if(dailyChallengesDate === today) return;
+
+    dailyChallengesDate = today;
+    dailyChallengesIds = pickDailyChallenges();
+    dailyChallengesClaimed = [];
+
+    localStorage.setItem("dailyChallengesDate", today);
+    localStorage.setItem("dailyChallengesIds", JSON.stringify(dailyChallengesIds));
+    localStorage.setItem("dailyChallengesClaimed", JSON.stringify(dailyChallengesClaimed));
+
+}
+
+function renderDailyChallenges(){
+
+    ensureDailyStatsFresh();
+    ensureDailyChallengesFresh();
+
+    const container = document.getElementById("dailyChallengesList");
+
+    if(!container) return;
+
+    const items = dailyChallengesIds
+        .map(id => dailyChallengePool.find(c=>c.id===id))
+        .filter(Boolean);
+
+    container.innerHTML = "";
+
+    items.forEach(c=>{
+
+        const progress = Math.min(c.get(), c.target);
+        const done = progress >= c.target;
+        const claimed = dailyChallengesClaimed.includes(c.id);
+
+        const div = document.createElement("div");
+
+        div.className = "challenge-card"+(claimed ? " claimed" : done ? " ready" : "");
+
+        div.innerHTML =
+            '<div class="challenge-icon">'+c.icon+'</div>'+
+            '<div class="challenge-info">'+
+            '<b>'+c.name+'</b>'+
+            '<small>'+progress+'/'+c.target+' · +'+c.reward+' XP</small>'+
+            '</div>'+
+            (claimed
+                ? '<span class="challenge-done">✅</span>'
+                : done
+                    ? '<button onclick="claimDailyChallenge(\''+c.id+'\')">Забрати</button>'
+                    : '<span class="challenge-lock">🔒</span>');
+
+        container.appendChild(div);
+
+    });
+
+}
+
+function claimDailyChallenge(id){
+
+    ensureDailyChallengesFresh();
+
+    if(dailyChallengesClaimed.includes(id)) return;
+
+    const c = dailyChallengePool.find(x=>x.id===id);
+
+    if(!c || c.get() < c.target) return;
+
+    dailyChallengesClaimed.push(id);
+
+    localStorage.setItem("dailyChallengesClaimed", JSON.stringify(dailyChallengesClaimed));
+
+    xp += c.reward;
+
+    updateLevel();
+
+    showToast("🎲 "+c.name+" виконано! +"+c.reward+" XP");
+
+    renderDailyChallenges();
+
+}
+
+// ----------------
+// Pomodoro — кілька незалежних таймерів одночасно, з паузою.
+// pomodoroRuntime тримає setInterval-хендли (не зберігається),
+// pomodoroTimers — стан кожного таймера (зберігається в localStorage).
+// ----------------
+
+let pomodoroTimers = JSON.parse(localStorage.getItem("pomodoroTimers")) || [];
+const pomodoroRuntime = {};
+
+function savePomodoroTimers(){
+
+    localStorage.setItem("pomodoroTimers", JSON.stringify(pomodoroTimers));
+
+}
+
+function findPomodoroTimer(id){
+
+    return pomodoroTimers.find(t=>t.id===id);
+
+}
+
+function formatPomodoroTime(seconds){
+
+    const m = Math.floor(seconds/60);
+    const s = seconds%60;
+
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+
+}
+
+function addPomodoroTimer(){
+
+    const minutesInput = document.getElementById("pomodoroMinutes");
+    const labelInput = document.getElementById("pomodoroLabel");
+
+    let minutes = Number(minutesInput ? minutesInput.value : 25);
+
+    if(!minutes || minutes<1) minutes = 1;
+    if(minutes>180) minutes = 180;
+
+    const label = (labelInput && labelInput.value.trim()) || "Pomodoro";
+
+    const t = {
+        id: "pt"+Date.now()+Math.floor(Math.random()*1000),
+        label: label,
+        duration: minutes*60,
+        remaining: minutes*60,
+        running: false,
+        endAt: null
+    };
+
+    pomodoroTimers.push(t);
+
+    savePomodoroTimers();
+    renderPomodoroTimers();
+
+    if(labelInput) labelInput.value = "";
+
+}
+
+function stopPomodoroInterval(id){
+
+    if(pomodoroRuntime[id]){
+
+        clearInterval(pomodoroRuntime[id]);
+
+        delete pomodoroRuntime[id];
+
+    }
+
+}
+
+function runPomodoroInterval(t){
+
+    stopPomodoroInterval(t.id);
+
+    pomodoroRuntime[t.id] = setInterval(()=>{
+
+        const current = findPomodoroTimer(t.id);
+
+        if(!current || !current.running){
+
+            stopPomodoroInterval(t.id);
+            return;
+
+        }
+
+        const remaining = Math.round((current.endAt - Date.now())/1000);
+
+        current.remaining = Math.max(0, remaining);
+
+        updatePomodoroTimerDisplay(current);
+
+        if(current.remaining<=0){
+
+            stopPomodoroInterval(current.id);
+
+            current.running = false;
+            current.endAt = null;
+            current.remaining = current.duration;
+
+            xp += 20;
+            updateLevel();
+
+            ensureDailyStatsFresh();
+            pomodorosCompletedToday++;
+            localStorage.setItem("pomodorosCompletedToday", pomodorosCompletedToday);
+
+            showToast("🎉 "+(current.label||"Pomodoro")+" завершено! +20 XP");
+
+            if(typeof pomodoroNotify !== "undefined" && pomodoroNotify && "Notification" in window && Notification.permission === "granted"){
+
+                if(typeof playNotificationSound === "function") playNotificationSound();
+
+                const pomodoroText = "🍅 "+(current.label||"Pomodoro")+" завершено! +20 XP";
+
+                if("serviceWorker" in navigator){
+
+                    navigator.serviceWorker.ready.then(reg=>{
+
+                        reg.showNotification("SelfDev", { body: pomodoroText, icon: "icon-192.png" });
+
+                    });
+
+                }else{
+
+                    new Notification("SelfDev", { body: pomodoroText });
+
+                }
+
+            }
+
+            savePomodoroTimers();
+            renderPomodoroTimers();
+            updateStats();
+
+        }
+
+    },1000);
+
+}
+
+function togglePomodoroTimer(id){
+
+    const t = findPomodoroTimer(id);
+
+    if(!t) return;
+
+    if(t.running){
+
+        stopPomodoroInterval(id);
+
+        t.remaining = Math.max(0, Math.round((t.endAt - Date.now())/1000));
+        t.running = false;
+        t.endAt = null;
+
+    }else{
+
+        if(t.remaining<=0) t.remaining = t.duration;
+
+        t.running = true;
+        t.endAt = Date.now() + t.remaining*1000;
+
+        runPomodoroInterval(t);
+
+    }
+
+    savePomodoroTimers();
+    renderPomodoroTimers();
+
+}
+
+function resetPomodoroTimer(id){
+
+    const t = findPomodoroTimer(id);
+
+    if(!t) return;
+
+    stopPomodoroInterval(id);
+
+    t.remaining = t.duration;
+    t.running = false;
+    t.endAt = null;
+
+    savePomodoroTimers();
+    renderPomodoroTimers();
+
+}
+
+function removePomodoroTimer(id){
+
+    stopPomodoroInterval(id);
+
+    pomodoroTimers = pomodoroTimers.filter(t=>t.id!==id);
+
+    savePomodoroTimers();
+    renderPomodoroTimers();
+
+}
+
+function updatePomodoroTimerDisplay(t){
+
+    const el = document.getElementById("pt-time-"+t.id);
+
+    if(el) el.innerText = formatPomodoroTime(t.remaining);
+
+    const fill = document.getElementById("pt-fill-"+t.id);
+
+    if(fill){
+
+        const pct = t.duration>0 ? Math.max(0, Math.min(100, (1-t.remaining/t.duration)*100)) : 0;
+
+        fill.style.width = pct+"%";
+
+    }
+
+}
+
+function renderPomodoroTimers(){
+
+    const container = document.getElementById("pomodoroList");
+
+    if(!container) return;
+
+    if(pomodoroTimers.length===0){
+
+        container.innerHTML = '<p style="opacity:.6;text-align:center;padding:16px">Додай перший таймер вище 🍅</p>';
+
+        return;
+
+    }
+
+    container.innerHTML = "";
+
+    pomodoroTimers.forEach(t=>{
+
+        const div = document.createElement("div");
+
+        div.className = "pomodoro-card"+(t.running ? " running" : "");
+
+        const pct = t.duration>0 ? Math.max(0, Math.min(100, (1-t.remaining/t.duration)*100)) : 0;
+
+        div.innerHTML =
+            '<div class="pomodoro-card-top">'+
+            '<b>'+t.label+'</b>'+
+            '<button class="pomodoro-remove" onclick="removePomodoroTimer(\''+t.id+'\')">✕</button>'+
+            '</div>'+
+            '<div class="pomodoro-card-time" id="pt-time-'+t.id+'">'+formatPomodoroTime(t.remaining)+'</div>'+
+            '<div class="pomodoro-progress"><div class="pomodoro-progress-fill" id="pt-fill-'+t.id+'" style="width:'+pct+'%"></div></div>'+
+            '<div class="pomodoro-card-actions">'+
+            '<button onclick="togglePomodoroTimer(\''+t.id+'\')">'+(t.running ? "⏸ Пауза" : "▶️ Старт")+'</button>'+
+            '<button onclick="resetPomodoroTimer(\''+t.id+'\')">🔄 Скинути</button>'+
+            '</div>';
+
+        container.appendChild(div);
+
+    });
+
+}
+
+function initPomodoroTimers(){
+
+    pomodoroTimers.forEach(t=>{
+
+        if(t.running && t.endAt){
+
+            const remaining = Math.round((t.endAt - Date.now())/1000);
+
+            if(remaining>0){
+
+                t.remaining = remaining;
+
+                runPomodoroInterval(t);
+
+            }else{
+
+                t.running = false;
+                t.endAt = null;
+                t.remaining = t.duration;
+
+            }
+
+        }
+
+    });
+
+    savePomodoroTimers();
+    renderPomodoroTimers();
 
 }
 
 try{
-    drawTimer();
+
+    initPomodoroTimers();
+
 }catch(e){
-    console.error("drawTimer init:", e);
+
+    console.error("Pomodoro init:", e);
+
 }
 
 try{
@@ -427,28 +855,68 @@ if(!list) return;
 
 list.innerHTML = "";
 
+const claimableIdx = [];
+const upcomingIdx = [];
+
 achievementDefs.forEach((def, i)=>{
 
     const unlocked = unlockedAchievements.includes(i);
     const claimed = claimedAchievements.includes(i);
-    const claimable = unlocked && !claimed;
+
+    if(claimed) return;
+
+    if(unlocked){
+
+        claimableIdx.push(i);
+
+    }else{
+
+        upcomingIdx.push(i);
+
+    }
+
+});
+
+upcomingIdx.sort((a,b)=>{
+
+    const defA = achievementDefs[a];
+    const defB = achievementDefs[b];
+
+    const pctA = (defA.target && defA.progress) ? defA.progress()/defA.target : 0;
+    const pctB = (defB.target && defB.progress) ? defB.progress()/defB.target : 0;
+
+    return pctB - pctA;
+
+});
+
+const visibleIdx = claimableIdx.concat(upcomingIdx).slice(0,4);
+
+if(visibleIdx.length === 0){
+
+    list.innerHTML = '<p style="opacity:.6;text-align:center;padding:10px">Усі досягнення забрано! 🏆 Перевір щоденні виклики на сторінці Досягнення</p>';
+
+}
+
+visibleIdx.forEach((i, order)=>{
+
+    const def = achievementDefs[i];
+
+    const unlocked = unlockedAchievements.includes(i);
+    const claimable = unlocked;
 
     const li = document.createElement("li");
 
     li.className = "achievement-item";
-    if(claimed) li.classList.add("unlocked");
     if(claimable) li.classList.add("claimable");
 
-    li.style.animationDelay = (i*0.06)+"s";
+    li.style.animationDelay = (order*0.06)+"s";
 
     const progressVal = def.progress ? def.progress() : 0;
     const progressText = (def.target && !unlocked) ? `${progressVal}/${def.target}` : "";
 
     let rightSide = "";
 
-    if(claimed){
-        rightSide = '<div class="achievement-badge">✓</div>';
-    }else if(claimable){
+    if(claimable){
         rightSide = `<div class="achievement-claim-btn">🎁 +${def.reward} XP</div>`;
         li.onclick = ()=> claimAchievement(i);
     }
@@ -747,6 +1215,10 @@ updateLevel();
 totalHabitCompletions++;
 localStorage.setItem("totalHabitCompletions", totalHabitCompletions);
 
+ensureDailyStatsFresh();
+habitsCompletedToday++;
+localStorage.setItem("habitsCompletedToday", habitsCompletedToday);
+
 registerStreakActivity();
 
 logActivity();
@@ -1024,6 +1496,10 @@ launchConfetti();
 
 totalGoalCompletions++;
 localStorage.setItem("totalGoalCompletions", totalGoalCompletions);
+
+ensureDailyStatsFresh();
+goalsCompletedToday++;
+localStorage.setItem("goalsCompletedToday", goalsCompletedToday);
 
 registerStreakActivity();
 
@@ -1303,6 +1779,8 @@ updateJarvisWidget();
 
 updateLifeSpheres();
 
+renderDailyChallenges();
+
 if(typeof syncMyProfileToCloud === "function"){
 
     syncMyProfileToCloud();
@@ -1505,91 +1983,6 @@ setTimeout(()=>{
 }, 1600);
 
 updateStats();
-
-}
-
-let timerEndAt = null;
-
-function startTimer(){
-
-if(interval) return;
-
-if(timer<=0){
-
-    timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
-
-}
-
-timerEndAt = Date.now() + timer*1000;
-
-interval = setInterval(()=>{
-
-const remaining = Math.round((timerEndAt - Date.now())/1000);
-
-timer = Math.max(0, remaining);
-
-drawTimer();
-
-if(timer<=0){
-
-clearInterval(interval);
-
-interval=null;
-
-timerEndAt=null;
-
-xp+=20;
-
-updateLevel();
-
-showToast("🎉 Pomodoro завершено! +20 XP");
-
-if(pomodoroNotify && "Notification" in window && Notification.permission === "granted"){
-
-    playNotificationSound();
-
-    const pomodoroText = "🍅 Pomodoro завершено! +20 XP";
-
-    if("serviceWorker" in navigator){
-
-        navigator.serviceWorker.ready.then(reg=>{
-
-            reg.showNotification("SelfDev", {
-                body: pomodoroText,
-                icon: "icon-192.png"
-            });
-
-        });
-
-    }else{
-
-        new Notification("SelfDev", { body: pomodoroText });
-
-    }
-
-}
-
-timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
-
-drawTimer();
-
-}
-
-},250);
-
-}
-
-function resetTimer(){
-
-clearInterval(interval);
-
-interval=null;
-
-timerEndAt=null;
-
-timer = Number(localStorage.getItem("pomodoroTime")) || 1500;
-
-drawTimer();
 
 }
 
@@ -1869,32 +2262,6 @@ function toggleHabitPin(index){
     save();
 
     renderHabits();
-
-}
-
-function savePomodoroTime(){
-
-    const minutes = Number(document.getElementById("pomodoroMinutes").value);
-
-    if(minutes < 1 || minutes > 180){
-        alert("Введіть від 1 до 180 хвилин");
-        return;
-    }
-
-    pomodoroTime = minutes * 60;
-    timer = pomodoroTime;
-
-    if(interval){
-
-        timerEndAt = Date.now() + timer*1000;
-
-    }
-
-    localStorage.setItem("pomodoroTime", pomodoroTime);
-
-    drawTimer();
-
-    showToast("🍅 Час Pomodoro збережено");
 
 }
 

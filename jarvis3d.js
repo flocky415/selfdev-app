@@ -9,6 +9,7 @@ let jarvisArmL, jarvisArmR;
 let jarvisLegL, jarvisLegR;
 let jarvisEyeBaseScaleY = 1;
 let jarvisAccessory = null;
+let jarvisAccessoryType = null;
 let jarvisClock = 0;
 let jarvisSpinBoost = 0;
 
@@ -232,7 +233,15 @@ function animateJarvis3D(){
 
     if(jarvisAccessory){
 
-        jarvisAccessory.rotation.z += 0.01;
+        if(jarvisAccessoryType === "crown"){
+
+            jarvisAccessory.rotation.y += 0.012;
+
+        }else{
+
+            jarvisAccessory.rotation.z += 0.01;
+
+        }
 
     }
 
@@ -282,6 +291,7 @@ function updateJarvis3DAccessory(){
 
         jarvisBody.remove(jarvisAccessory);
         jarvisAccessory = null;
+        jarvisAccessoryType = null;
 
     }
 
@@ -315,6 +325,7 @@ function updateJarvis3DAccessory(){
         crownGroup.position.set(0, 1.0, 0);
 
         jarvisAccessory = crownGroup;
+        jarvisAccessoryType = "crown";
         jarvisBody.add(jarvisAccessory);
 
     }else if(lvl>=6){
@@ -323,6 +334,7 @@ function updateJarvis3DAccessory(){
         const ringMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x8b5cf6, emissiveIntensity: 0.4 });
         jarvisAccessory = new THREE.Mesh(ringGeo, ringMat);
         jarvisAccessory.rotation.x = Math.PI/2.2;
+        jarvisAccessoryType = "ring";
         jarvisBody.add(jarvisAccessory);
 
     }else if(lvl>=3){
@@ -331,6 +343,7 @@ function updateJarvis3DAccessory(){
         const ringMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x22c55e, emissiveIntensity: 0.3 });
         jarvisAccessory = new THREE.Mesh(ringGeo, ringMat);
         jarvisAccessory.rotation.x = Math.PI/2.2;
+        jarvisAccessoryType = "ring";
         jarvisBody.add(jarvisAccessory);
 
     }
@@ -488,7 +501,10 @@ const jarvisCostumes = [
     { id:"none", name:"Без костюма", unlockLevel:1 },
     { id:"pirate", name:"🏴‍☠️ Пірат", unlockLevel:5 },
     { id:"dog", name:"🐶 Песик", unlockLevel:8 },
-    { id:"cat", name:"🐱 Котик", unlockLevel:12 }
+    { id:"cat", name:"🐱 Котик", unlockLevel:12 },
+    { id:"robot", name:"🤖 Робот", unlockLevel:16 },
+    { id:"viking", name:"🪓 Вікінг", unlockLevel:20 },
+    { id:"tuxedo", name:"🎩 Смокінг", unlockLevel:25 }
 ];
 
 let jarvisCostumeId = localStorage.getItem("jarvisCostume") || "none";
@@ -581,6 +597,176 @@ function buildCatCostume(){
 
 }
 
+function buildRobotCostume(){
+
+    const body = new THREE.Group();
+
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.3 });
+    const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7, roughness: 0.3 });
+    const glowMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 0.8 });
+
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.66, 16, 16), metalMat);
+    helmet.position.set(0, 0.3, 0);
+    helmet.scale.set(1, 1.15, 1);
+    body.add(helmet);
+
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.1), glowMat);
+    visor.position.set(0, 0.28, 0.6);
+    body.add(visor);
+
+    [-1, 1].forEach(function(side){
+
+        const pauldron = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.22, 0.22), darkMetalMat);
+        pauldron.position.set(side*0.68, 0.05, 0);
+        body.add(pauldron);
+
+    });
+
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.3), metalMat);
+    chest.position.set(0, -0.35, 0.4);
+    body.add(chest);
+
+    const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.02, 8, 20), darkMetalMat);
+    coreRing.position.set(0, -0.35, 0.58);
+    body.add(coreRing);
+
+    const coreGlow = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), glowMat);
+    coreGlow.position.set(0, -0.35, 0.585);
+    body.add(coreGlow);
+
+    const armL = new THREE.Group();
+    const gauntletL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), darkMetalMat);
+    gauntletL.position.set(0, 0.15, 0);
+    armL.add(gauntletL);
+
+    const armR = new THREE.Group();
+    const gauntletR = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), darkMetalMat);
+    gauntletR.position.set(0, 0.15, 0);
+    armR.add(gauntletR);
+
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), glowMat);
+    orb.position.set(0, 0.3, 0);
+    armR.add(orb);
+
+    return { body: body, armL: armL, armR: armR, hideEye: true };
+
+}
+
+function buildVikingCostume(){
+
+    const body = new THREE.Group();
+
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x78716c, metalness: 0.5, roughness: 0.5 });
+    const hornMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e6 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 });
+
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 14, 0, Math.PI*2, 0, Math.PI*0.55), metalMat);
+    helmet.position.set(0, 0.55, 0);
+    body.add(helmet);
+
+    [-1, 1].forEach(function(side){
+
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 8), hornMat);
+        horn.position.set(side*0.45, 0.85, 0);
+        horn.rotation.z = side*0.7;
+        body.add(horn);
+
+    });
+
+    [-1, 1].forEach(function(side){
+
+        const fur = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), new THREE.MeshStandardMaterial({ color: 0xf5f5f4 }));
+        fur.position.set(side*0.65, 0.08, 0);
+        body.add(fur);
+
+    });
+
+    const vest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.3), leatherMat);
+    vest.position.set(0, -0.35, 0.4);
+    body.add(vest);
+
+    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.04), goldMat);
+    buckle.position.set(0, -0.35, 0.58);
+    body.add(buckle);
+
+    const beard = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10), new THREE.MeshStandardMaterial({ color: 0x8a5a2b }));
+    beard.scale.set(0.85, 1.1, 0.55);
+    beard.position.set(0, -0.15, 0.4);
+    body.add(beard);
+
+    const armL = new THREE.Group();
+    const shieldFace = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 16), leatherMat);
+    shieldFace.position.set(0, 0.15, 0);
+    shieldFace.rotation.x = Math.PI/2;
+    armL.add(shieldFace);
+
+    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), goldMat);
+    boss.position.set(0, 0.15, 0.03);
+    armL.add(boss);
+
+    const armR = new THREE.Group();
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8), leatherMat);
+    handle.position.set(0, 0.35, 0);
+    armR.add(handle);
+
+    const axeHead = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.2, 4), metalMat);
+    axeHead.position.set(0.1, 0.55, 0);
+    axeHead.rotation.z = Math.PI/2;
+    axeHead.scale.set(1, 0.5, 1);
+    armR.add(axeHead);
+
+    return { body: body, armL: armL, armR: armR };
+
+}
+
+function buildTuxedoCostume(){
+
+    const body = new THREE.Group();
+
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 });
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 16), blackMat);
+    brim.position.set(0, 0.8, 0);
+    body.add(brim);
+
+    const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.45, 16), blackMat);
+    hatCrown.position.set(0, 1.05, 0);
+    body.add(hatCrown);
+
+    const jacket = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.72, 0.35), blackMat);
+    jacket.position.set(0, -0.35, 0.4);
+    body.add(jacket);
+
+    const shirt = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.24, 4), whiteMat);
+    shirt.position.set(0, -0.05, 0.58);
+    shirt.rotation.x = Math.PI;
+    shirt.scale.set(1, 1, 0.3);
+    body.add(shirt);
+
+    const bow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.04), blackMat);
+    bow.position.set(0, -0.02, 0.6);
+    body.add(bow);
+
+    const armR = new THREE.Group();
+
+    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 8), blackMat);
+    cane.position.set(0, -0.15, 0);
+    armR.add(cane);
+
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldMat);
+    handle.position.set(0, 0.13, 0);
+    armR.add(handle);
+
+    return { body: body, armR: armR };
+
+}
+
+let jarvisCostumeArmL = null;
+let jarvisCostumeArmR = null;
+
 function applyJarvisCostume(){
 
     if(!jarvisBody) return;
@@ -592,25 +778,74 @@ function applyJarvisCostume(){
 
     }
 
+    if(jarvisCostumeArmL && jarvisArmL){
+
+        jarvisArmL.remove(jarvisCostumeArmL);
+        jarvisCostumeArmL = null;
+
+    }
+
+    if(jarvisCostumeArmR && jarvisArmR){
+
+        jarvisArmR.remove(jarvisCostumeArmR);
+        jarvisCostumeArmR = null;
+
+    }
+
+    if(jarvisEyeWhite) jarvisEyeWhite.visible = true;
+
+    let parts = null;
+
     if(jarvisCostumeId === "pirate"){
 
-        jarvisCostumeGroup = buildPirateCostume();
+        parts = { body: buildPirateCostume() };
 
     }else if(jarvisCostumeId === "dog"){
 
-        jarvisCostumeGroup = buildDogCostume();
+        parts = { body: buildDogCostume() };
 
     }else if(jarvisCostumeId === "cat"){
 
-        jarvisCostumeGroup = buildCatCostume();
+        parts = { body: buildCatCostume() };
+
+    }else if(jarvisCostumeId === "robot"){
+
+        parts = buildRobotCostume();
+
+    }else if(jarvisCostumeId === "viking"){
+
+        parts = buildVikingCostume();
+
+    }else if(jarvisCostumeId === "tuxedo"){
+
+        parts = buildTuxedoCostume();
 
     }
 
-    if(jarvisCostumeGroup){
+    if(!parts) return;
 
+    if(parts.body){
+
+        jarvisCostumeGroup = parts.body;
         jarvisBody.add(jarvisCostumeGroup);
 
     }
+
+    if(parts.armL && jarvisArmL){
+
+        jarvisCostumeArmL = parts.armL;
+        jarvisArmL.add(jarvisCostumeArmL);
+
+    }
+
+    if(parts.armR && jarvisArmR){
+
+        jarvisCostumeArmR = parts.armR;
+        jarvisArmR.add(jarvisCostumeArmR);
+
+    }
+
+    if(parts.hideEye && jarvisEyeWhite) jarvisEyeWhite.visible = false;
 
 }
 

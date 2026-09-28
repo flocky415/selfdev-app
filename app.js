@@ -65,14 +65,40 @@ const achievementDefs = [
     { name:"Перше виконане завдання", icon:"🎯", target:1, reward:20, progress: ()=> Math.min(totalHabitCompletions,1), check: ()=> totalHabitCompletions>=1 },
     { name:"10 виконаних завдань", icon:"🔥", target:10, reward:40, progress: ()=> Math.min(totalHabitCompletions,10), check: ()=> totalHabitCompletions>=10 },
     { name:"25 виконаних завдань", icon:"💪", target:25, reward:80, progress: ()=> Math.min(totalHabitCompletions,25), check: ()=> totalHabitCompletions>=25 },
+    { name:"50 виконаних завдань", icon:"🥉", target:50, reward:120, progress: ()=> Math.min(totalHabitCompletions,50), check: ()=> totalHabitCompletions>=50 },
+    { name:"100 виконаних завдань", icon:"🥈", target:100, reward:200, progress: ()=> Math.min(totalHabitCompletions,100), check: ()=> totalHabitCompletions>=100 },
+    { name:"250 виконаних завдань", icon:"🥇", target:250, reward:350, progress: ()=> Math.min(totalHabitCompletions,250), check: ()=> totalHabitCompletions>=250 },
+    { name:"500 виконаних завдань", icon:"🏵️", target:500, reward:500, progress: ()=> Math.min(totalHabitCompletions,500), check: ()=> totalHabitCompletions>=500 },
+    { name:"1000 виконаних завдань", icon:"🌌", target:1000, reward:1000, progress: ()=> Math.min(totalHabitCompletions,1000), check: ()=> totalHabitCompletions>=1000 },
+
     { name:"Перша виконана ціль", icon:"🚩", target:1, reward:20, progress: ()=> Math.min(totalGoalCompletions,1), check: ()=> totalGoalCompletions>=1 },
     { name:"5 виконаних цілей", icon:"🏆", target:5, reward:60, progress: ()=> Math.min(totalGoalCompletions,5), check: ()=> totalGoalCompletions>=5 },
     { name:"10 виконаних цілей", icon:"💎", target:10, reward:100, progress: ()=> Math.min(totalGoalCompletions,10), check: ()=> totalGoalCompletions>=10 },
+    { name:"25 виконаних цілей", icon:"👑", target:25, reward:200, progress: ()=> Math.min(totalGoalCompletions,25), check: ()=> totalGoalCompletions>=25 },
+    { name:"50 виконаних цілей", icon:"🎖️", target:50, reward:350, progress: ()=> Math.min(totalGoalCompletions,50), check: ()=> totalGoalCompletions>=50 },
+    { name:"100 виконаних цілей", icon:"🛡️", target:100, reward:600, progress: ()=> Math.min(totalGoalCompletions,100), check: ()=> totalGoalCompletions>=100 },
+
+    { name:"Серія 3 дні", icon:"🔥", target:3, reward:30, progress: ()=> Math.min(streak,3), check: ()=> streak>=3 },
     { name:"Серія 7 днів", icon:"📅", target:7, reward:50, freezeReward:1, progress: ()=> Math.min(streak,7), check: ()=> streak>=7 },
+    { name:"Серія 14 днів", icon:"🌙", target:14, reward:90, progress: ()=> Math.min(streak,14), check: ()=> streak>=14 },
     { name:"Серія 30 днів", icon:"🌟", target:30, reward:150, freezeReward:3, progress: ()=> Math.min(streak,30), check: ()=> streak>=30 },
+    { name:"Серія 60 днів", icon:"☄️", target:60, reward:250, progress: ()=> Math.min(streak,60), check: ()=> streak>=60 },
+    { name:"Серія 100 днів", icon:"🪐", target:100, reward:400, progress: ()=> Math.min(streak,100), check: ()=> streak>=100 },
+    { name:"Серія 365 днів", icon:"🌍", target:365, reward:1000, progress: ()=> Math.min(streak,365), check: ()=> streak>=365 },
+
+    { name:"Перший Pomodoro", icon:"🍅", target:1, reward:20, progress: ()=> Math.min(totalPomodoroCompletions,1), check: ()=> totalPomodoroCompletions>=1 },
+    { name:"10 Pomodoro-сесій", icon:"⏱️", target:10, reward:70, progress: ()=> Math.min(totalPomodoroCompletions,10), check: ()=> totalPomodoroCompletions>=10 },
+    { name:"50 Pomodoro-сесій", icon:"⏳", target:50, reward:250, progress: ()=> Math.min(totalPomodoroCompletions,50), check: ()=> totalPomodoroCompletions>=50 },
+    { name:"100 Pomodoro-сесій", icon:"🧠", target:100, reward:450, progress: ()=> Math.min(totalPomodoroCompletions,100), check: ()=> totalPomodoroCompletions>=100 },
+
     { name:"100 XP (Рівень 2)", icon:"⭐", target:2, reward:60, progress: ()=> Math.min(level,2), check: ()=> level>=2 },
+    { name:"Рівень 5", icon:"✨", target:5, reward:80, progress: ()=> Math.min(level,5), check: ()=> level>=5 },
     { name:"500 XP (Рівень 6)", icon:"🏅", target:6, reward:100, progress: ()=> Math.min(level,6), check: ()=> level>=6 },
-    { name:"1000 XP (Рівень 11)", icon:"👑", target:11, reward:200, progress: ()=> Math.min(level,11), check: ()=> level>=11 }
+    { name:"1000 XP (Рівень 11)", icon:"👑", target:11, reward:200, progress: ()=> Math.min(level,11), check: ()=> level>=11 },
+    { name:"Рівень 15", icon:"💫", target:15, reward:280, progress: ()=> Math.min(level,15), check: ()=> level>=15 },
+    { name:"Рівень 20", icon:"🔮", target:20, reward:400, progress: ()=> Math.min(level,20), check: ()=> level>=20 },
+    { name:"Рівень 30", icon:"🧙", target:30, reward:600, progress: ()=> Math.min(level,30), check: ()=> level>=30 },
+    { name:"Рівень 50", icon:"🐉", target:50, reward:1000, progress: ()=> Math.min(level,50), check: ()=> level>=50 }
 ];
 let theme =
 localStorage.getItem("theme") || "dark";
@@ -333,6 +359,13 @@ let dailyStatsDate = localStorage.getItem("dailyStatsDate") || "";
 let habitsCompletedToday = Number(localStorage.getItem("habitsCompletedToday")) || 0;
 let goalsCompletedToday = Number(localStorage.getItem("goalsCompletedToday")) || 0;
 let pomodorosCompletedToday = Number(localStorage.getItem("pomodorosCompletedToday")) || 0;
+let totalPomodoroCompletions = Number(localStorage.getItem("totalPomodoroCompletions")) || 0;
+
+// "Липкий" пік денного прогресу і разова готовність бонусу — щоб видалення
+// вже виконаного завдання не відміняло зарахований прогрес дня (так само,
+// як ХП ніколи не зменшується заднім числом)
+let dayProgressPeakPercent = Number(localStorage.getItem("dayProgressPeakPercent")) || 0;
+let dailyBonusReady = localStorage.getItem("dailyBonusReady") === "true";
 
 function ensureDailyStatsFresh(){
 
@@ -344,11 +377,15 @@ function ensureDailyStatsFresh(){
     habitsCompletedToday = 0;
     goalsCompletedToday = 0;
     pomodorosCompletedToday = 0;
+    dayProgressPeakPercent = 0;
+    dailyBonusReady = false;
 
     localStorage.setItem("dailyStatsDate", today);
     localStorage.setItem("habitsCompletedToday", "0");
     localStorage.setItem("goalsCompletedToday", "0");
     localStorage.setItem("pomodorosCompletedToday", "0");
+    localStorage.setItem("dayProgressPeakPercent", "0");
+    localStorage.setItem("dailyBonusReady", "false");
 
 }
 
@@ -581,6 +618,9 @@ function runPomodoroInterval(t){
             ensureDailyStatsFresh();
             pomodorosCompletedToday++;
             localStorage.setItem("pomodorosCompletedToday", pomodorosCompletedToday);
+
+            totalPomodoroCompletions++;
+            localStorage.setItem("totalPomodoroCompletions", totalPomodoroCompletions);
 
             showToast("🎉 "+(current.label||"Pomodoro")+" завершено! +20 XP");
 
@@ -1791,14 +1831,25 @@ if(typeof syncMyProfileToCloud === "function"){
 
 function updateDayProgress(){
 
+ensureDailyStatsFresh();
+
 const total = habits.length + goals.length;
 
 const done =
 habits.filter(h=>h.done).length +
 goals.filter(g=>g.done).length;
 
-const percent =
+const currentPercent =
 total===0 ? 0 : Math.round(done/total*100);
+
+if(currentPercent > dayProgressPeakPercent){
+
+    dayProgressPeakPercent = currentPercent;
+    localStorage.setItem("dayProgressPeakPercent", dayProgressPeakPercent);
+
+}
+
+const percent = dayProgressPeakPercent;
 
 const bar=document.getElementById("dayProgress");
 
@@ -1824,10 +1875,19 @@ let dailyBonusClaimedDate = localStorage.getItem("dailyBonusClaimedDate") || "";
 
 function updateDailyBonusState(){
 
+ensureDailyStatsFresh();
+
 const total = habits.length + goals.length;
 const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
 
 const allDone = total > 0 && done === total;
+
+if(allDone && !dailyBonusReady){
+
+    dailyBonusReady = true;
+    localStorage.setItem("dailyBonusReady", "true");
+
+}
 
 const btn = document.getElementById("dailyBonusBtn");
 const text = document.getElementById("dailyBonusText");
@@ -1847,7 +1907,7 @@ if(alreadyClaimed){
     btn.innerText = "✅ Отримано на сьогодні";
     text.innerText = "Повертайся завтра за новим бонусом!";
 
-}else if(allDone){
+}else if(dailyBonusReady){
 
     btn.disabled = false;
     btn.classList.add("ready");

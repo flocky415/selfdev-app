@@ -127,7 +127,7 @@ function initJarvis3D(){
     jarvisBody.add(mouth);
 
     // Маленькі ручки
-    const armGeo = new THREE.CapsuleGeometry(0.08, 0.3, 4, 8);
+    const armGeo = new THREE.CapsuleGeometry(0.105, 0.34, 4, 8);
     const armMat = new THREE.MeshStandardMaterial({ color: 0xffd93d });
 
     jarvisArmL = new THREE.Mesh(armGeo, armMat);
@@ -294,6 +294,8 @@ function updateJarvis3DAccessory(){
         jarvisAccessoryType = null;
 
     }
+
+    if(typeof jarvisCostumeId !== "undefined" && jarvisCostumeId !== "none") return;
 
     const lvl = typeof level !== "undefined" ? level : 1;
 
@@ -510,90 +512,325 @@ const jarvisCostumes = [
 let jarvisCostumeId = localStorage.getItem("jarvisCostume") || "none";
 let jarvisCostumeGroup = null;
 
-function buildPirateCostume(){
+// Замість пласкої коробки, приліпленої до круглого тіла, збираю "одяг"
+// з кількох вигнутих по колу панелей — так костюм реально облягає фігурку,
+// а не висить спереду як дощечка.
+function buildTorsoWrap(mat, yPos, height, segments, archRad, radius){
 
     const group = new THREE.Group();
-    const hatMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
 
-    const brimGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.06, 16);
-    const brim = new THREE.Mesh(brimGeo, hatMat);
-    brim.position.set(0, 1.02, 0);
-    group.add(brim);
+    segments = segments || 9;
+    archRad = archRad || Math.PI*1.3;
+    radius = radius || 0.6;
 
-    const topGeo = new THREE.SphereGeometry(0.32, 16, 8, 0, Math.PI*2, 0, Math.PI/2);
-    const top = new THREE.Mesh(topGeo, hatMat);
-    top.position.set(0, 1.05, 0);
-    group.add(top);
+    const segAngle = archRad/segments;
+    const segWidth = 2*radius*Math.tan(segAngle/2)*1.18;
+    const depth = 0.12;
 
-    const patchGeo = new THREE.CircleGeometry(0.15, 16);
-    const patchMat = new THREE.MeshStandardMaterial({ color: 0x000000, side: THREE.DoubleSide });
-    const patch = new THREE.Mesh(patchGeo, patchMat);
-    patch.position.set(-0.15, 0.28, 0.92);
-    group.add(patch);
+    for(let i=0;i<segments;i++){
+
+        const angle = -archRad/2 + segAngle*(i+0.5);
+
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(segWidth, height, depth), mat);
+
+        panel.position.set(Math.sin(angle)*radius, yPos, Math.cos(angle)*radius);
+        panel.rotation.y = angle;
+
+        group.add(panel);
+
+    }
 
     return group;
+
+}
+
+function buildPirateCostume(){
+
+    const body = new THREE.Group();
+
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+
+    const hatGroup = new THREE.Group();
+
+    const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.7, 0.06, 20), hatMat);
+    hatBrim.position.set(0, 0, 0);
+    hatGroup.add(hatBrim);
+
+    const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.3, 16), hatMat);
+    hatCrown.position.set(0, 0.17, -0.05);
+    hatGroup.add(hatCrown);
+
+    const hatTop = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 8, 0, Math.PI*2, 0, Math.PI/2), hatMat);
+    hatTop.position.set(0, 0.32, -0.05);
+    hatGroup.add(hatTop);
+
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+    skull.position.set(0, 0.1, 0.36);
+    hatGroup.add(skull);
+
+    hatGroup.position.set(0, 0.68, 0);
+    hatGroup.rotation.z = -0.18;
+    hatGroup.rotation.x = 0.1;
+
+    body.add(hatGroup);
+
+    const coatMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.6 });
+    body.add(buildTorsoWrap(coatMat, -0.35, 0.68, 9, Math.PI*1.3, 0.6));
+
+    const emblemMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
+
+    const skullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+
+    // Уся емблема в одній групі, чітко винесеній ПЕРЕД поверхнею камзола
+    // (панелі камзола сягають z≈0.66 — група стоїть на z=0.8, з запасом).
+    const emblemGroup = new THREE.Group();
+    emblemGroup.position.set(0, -0.22, 0.8);
+    body.add(emblemGroup);
+
+    // Кістки навхрест — позаду черепа в межах групи, але все одно
+    // попереду камзола
+    const boneGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.62, 6);
+    const knobGeo = new THREE.SphereGeometry(0.06, 8, 8);
+
+    [Math.PI/4, -Math.PI/4].forEach(function(rot){
+
+        const bone = new THREE.Mesh(boneGeo, emblemMat);
+        bone.position.set(0, 0, -0.08);
+        bone.rotation.z = rot;
+        emblemGroup.add(bone);
+
+        [-0.31, 0.31].forEach(function(off){
+
+            const knob = new THREE.Mesh(knobGeo, emblemMat);
+            knob.position.set(Math.sin(rot)*off, Math.cos(rot)*off, -0.08);
+            emblemGroup.add(knob);
+
+        });
+
+    });
+
+    // Витягнута голово подібна форма черепа (не куля)
+    const skullBadge = new THREE.Mesh(new THREE.SphereGeometry(0.21, 14, 12), skullMat);
+    skullBadge.scale.set(1, 1.1, 0.6);
+    emblemGroup.add(skullBadge);
+
+    const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skullMat);
+    jaw.position.set(0, -0.17, -0.03);
+    jaw.scale.set(0.8, 0.45, 0.55);
+    emblemGroup.add(jaw);
+
+    // Великі очниці
+    [-0.09, 0.09].forEach(function(x){
+
+        const socket = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), darkMat);
+        socket.position.set(x, 0.04, 0.09);
+        socket.scale.set(1, 1, 0.5);
+        emblemGroup.add(socket);
+
+    });
+
+    // Прорізаний (плаский, врізаний) ніс — трикутна щілина, не випинається
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.08, 3), darkMat);
+    nose.rotation.x = Math.PI/2;
+    nose.rotation.z = Math.PI;
+    nose.scale.set(1, 1, 0.3);
+    nose.position.set(0, -0.05, 0.1);
+    emblemGroup.add(nose);
+
+    // Зуби — одна темна щілина-смужка замість окремих зубців
+    const teeth = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.035, 0.05), darkMat);
+    teeth.position.set(0, -0.17, 0.08);
+    emblemGroup.add(teeth);
+
+    const buttonMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 });
+
+    [[-0.15,-0.15],[-0.15,-0.4],[0.15,-0.15],[0.15,-0.4]].forEach(function(p){
+
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), buttonMat);
+        b.position.set(p[0], p[1], 0.58);
+        body.add(b);
+
+    });
+
+    const armR = new THREE.Group();
+
+    const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.04, 1.12, 8), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.7, roughness: 0.2 }));
+    blade.position.set(0, 0.84, 0);
+    armR.add(blade);
+
+    const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.4, 6), buttonMat);
+    guard.position.set(0, 0.3, 0);
+    guard.rotation.z = Math.PI/2;
+    armR.add(guard);
+
+    const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.24, 0.11), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+    hilt.position.set(0, 0.16, 0);
+    armR.add(hilt);
+
+    const armL = new THREE.Group();
+
+    const hookMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.3 });
+
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.14, 8), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+    cuff.position.set(0, 0.09, 0);
+    armL.add(cuff);
+
+    const hookShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.24, 8), hookMat);
+    hookShaft.position.set(0, 0.28, 0);
+    armL.add(hookShaft);
+
+    const hookCurve = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 14, Math.PI*1.2), hookMat);
+    hookCurve.position.set(0, 0.46, 0);
+    hookCurve.rotation.z = Math.PI*0.08;
+    armL.add(hookCurve);
+
+    return { body: body, armL: armL, armR: armR };
 
 }
 
 function buildDogCostume(){
 
-    const group = new THREE.Group();
-    const earMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
+    const body = new THREE.Group();
 
-    const earGeo = new THREE.SphereGeometry(0.3, 16, 16);
+    const earMat = new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.7 });
 
-    const earL = new THREE.Mesh(earGeo, earMat);
-    earL.scale.set(0.5, 1.4, 0.45);
-    earL.position.set(-0.72, 0.3, 0.1);
-    group.add(earL);
+    [-1, 1].forEach(function(side){
 
-    const earR = new THREE.Mesh(earGeo, earMat.clone());
-    earR.scale.set(0.5, 1.4, 0.45);
-    earR.position.set(0.72, 0.3, 0.1);
-    group.add(earR);
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), earMat);
+        ear.scale.set(0.5, 1.3, 0.4);
+        ear.position.set(side*0.55, 0.55, 0.05);
+        ear.rotation.z = side*0.4;
+        body.add(ear);
 
-    const headbandGeo = new THREE.TorusGeometry(0.65, 0.04, 8, 24);
-    const headbandMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
-    const headband = new THREE.Mesh(headbandGeo, headbandMat);
-    headband.rotation.x = Math.PI/2;
-    headband.position.set(0, 0.85, 0);
-    group.add(headband);
+    });
 
-    const noseGeo = new THREE.SphereGeometry(0.11, 12, 12);
-    const noseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-    const nose = new THREE.Mesh(noseGeo, noseMat);
-    nose.position.set(0, -0.1, 1.0);
-    group.add(nose);
+    const topknotMat = new THREE.MeshStandardMaterial({ color: 0xc2884f, roughness: 0.7 });
 
-    return group;
+    [0, 1, 2].forEach(function(i){
+
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.09-i*0.015, 8, 8), topknotMat);
+        puff.position.set(i*0.03, 0.85+i*0.09, 0.05-i*0.05);
+        body.add(puff);
+
+    });
+
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.02, 6, 12), new THREE.MeshStandardMaterial({ color: 0x84cc16 }));
+    tie.position.set(0, 0.78, 0.1);
+    tie.rotation.x = Math.PI/2;
+    body.add(tie);
+
+    body.add(buildTorsoWrap(new THREE.MeshStandardMaterial({ color: 0x38bdf8 }), -0.35, 0.68, 9, Math.PI*1.3, 0.6));
+
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfff7ed }));
+    patch.scale.set(1, 1.1, 0.25);
+    patch.position.set(0, -0.35, 0.58);
+    body.add(patch);
+
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 24), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+    collar.position.set(0, -0.02, 0);
+    collar.rotation.x = Math.PI/2;
+    body.add(collar);
+
+    const tag = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 }));
+    tag.position.set(0, -0.15, 0.42);
+    body.add(tag);
+
+    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.03), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    tongue.position.set(0, -0.15, 0.62);
+    tongue.rotation.x = -0.3;
+    body.add(tongue);
+
+    const armR = new THREE.Group();
+
+    [-0.06, 0.06].forEach(function(x){
+
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfef3c7 }));
+        knob.position.set(x, 0.15, 0);
+        armR.add(knob);
+
+    });
+
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 8), new THREE.MeshStandardMaterial({ color: 0xfef3c7 }));
+    shaft.position.set(0, 0.15, 0);
+    shaft.rotation.z = Math.PI/2;
+    armR.add(shaft);
+
+    return { body: body, armR: armR };
 
 }
 
 function buildCatCostume(){
 
-    const group = new THREE.Group();
-    const earMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6 });
+    const body = new THREE.Group();
 
-    const earGeo = new THREE.ConeGeometry(0.22, 0.38, 4);
+    const earOuterMat = new THREE.MeshStandardMaterial({ color: 0xf5c518 });
+    const earInnerMat = new THREE.MeshStandardMaterial({ color: 0xfda4af });
 
-    const earL = new THREE.Mesh(earGeo, earMat);
-    earL.position.set(-0.42, 0.88, 0);
-    earL.rotation.z = -0.25;
-    group.add(earL);
+    [-1, 1].forEach(function(side){
 
-    const earR = new THREE.Mesh(earGeo, earMat.clone());
-    earR.position.set(0.42, 0.88, 0);
-    earR.rotation.z = 0.25;
-    group.add(earR);
+        const outer = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.28, 4), earOuterMat);
+        outer.position.set(side*0.32, 0.78, 0);
+        outer.rotation.y = Math.PI/4;
+        body.add(outer);
 
-    const noseGeo = new THREE.ConeGeometry(0.06, 0.09, 6);
-    const noseMat = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
-    const nose = new THREE.Mesh(noseGeo, noseMat);
-    nose.position.set(0, -0.1, 1.0);
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.16, 4), earInnerMat);
+        inner.position.set(side*0.32, 0.75, 0.08);
+        inner.rotation.y = Math.PI/4;
+        body.add(inner);
+
+    });
+
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.05, 4), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    nose.position.set(0, 0.02, 0.6);
     nose.rotation.x = Math.PI/2;
-    group.add(nose);
+    body.add(nose);
 
-    return group;
+    const whiskerMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+
+    [-1, 1].forEach(function(side){
+
+        for(let i=0;i<3;i++){
+
+            const w = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.28, 4), whiskerMat);
+            w.position.set(side*0.55, 0.1-i*0.05, 0.45);
+            w.rotation.z = Math.PI/2;
+            body.add(w);
+
+        }
+
+    });
+
+    body.add(buildTorsoWrap(new THREE.MeshStandardMaterial({ color: 0xfb923c }), -0.35, 0.68, 9, Math.PI*1.3, 0.6));
+
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfff7ed }));
+    patch.scale.set(1, 1.1, 0.25);
+    patch.position.set(0, -0.35, 0.58);
+    body.add(patch);
+
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.55, 8), new THREE.MeshStandardMaterial({ color: 0xffd93d }));
+    tail.position.set(0.55, -0.5, -0.3);
+    tail.rotation.z = Math.PI/3;
+    tail.rotation.x = -Math.PI/6;
+    body.add(tail);
+
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+    tailTip.position.set(0.8, -0.25, -0.5);
+    body.add(tailTip);
+
+    const armR = new THREE.Group();
+
+    const fishBody = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+    fishBody.scale.set(1.6, 0.7, 0.7);
+    fishBody.position.set(0.1, 0.15, 0);
+    armR.add(fishBody);
+
+    const fishTail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 4), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+    fishTail.position.set(0.25, 0.15, 0);
+    fishTail.rotation.z = -Math.PI/2;
+    armR.add(fishTail);
+
+    return { body: body, armR: armR };
 
 }
 
@@ -611,7 +848,7 @@ function buildRobotCostume(){
     body.add(helmet);
 
     const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.1), glowMat);
-    visor.position.set(0, 0.28, 0.6);
+    visor.position.set(0, 0.28, 0.63);
     body.add(visor);
 
     [-1, 1].forEach(function(side){
@@ -622,9 +859,7 @@ function buildRobotCostume(){
 
     });
 
-    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.3), metalMat);
-    chest.position.set(0, -0.35, 0.4);
-    body.add(chest);
+    body.add(buildTorsoWrap(metalMat, -0.35, 0.66, 9, Math.PI*1.3, 0.6));
 
     const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.02, 8, 20), darkMetalMat);
     coreRing.position.set(0, -0.35, 0.58);
@@ -667,9 +902,10 @@ function buildVikingCostume(){
 
     [-1, 1].forEach(function(side){
 
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 8), hornMat);
-        horn.position.set(side*0.45, 0.85, 0);
-        horn.rotation.z = side*0.7;
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.3, 8), hornMat);
+        horn.position.set(side*0.38, 0.8, 0.04);
+        horn.rotation.z = side*0.45;
+        horn.rotation.x = -0.15;
         body.add(horn);
 
     });
@@ -682,9 +918,7 @@ function buildVikingCostume(){
 
     });
 
-    const vest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.3), leatherMat);
-    vest.position.set(0, -0.35, 0.4);
-    body.add(vest);
+    body.add(buildTorsoWrap(leatherMat, -0.35, 0.66, 9, Math.PI*1.3, 0.6));
 
     const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.04), goldMat);
     buckle.position.set(0, -0.35, 0.58);
@@ -706,12 +940,12 @@ function buildVikingCostume(){
     armL.add(boss);
 
     const armR = new THREE.Group();
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8), leatherMat);
-    handle.position.set(0, 0.35, 0);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.3, 8), leatherMat);
+    handle.position.set(0, 0.25, 0);
     armR.add(handle);
 
-    const axeHead = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.2, 4), metalMat);
-    axeHead.position.set(0.1, 0.55, 0);
+    const axeHead = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.15, 4), metalMat);
+    axeHead.position.set(0.07, 0.38, 0);
     axeHead.rotation.z = Math.PI/2;
     axeHead.scale.set(1, 0.5, 1);
     armR.add(axeHead);
@@ -736,9 +970,7 @@ function buildTuxedoCostume(){
     hatCrown.position.set(0, 1.05, 0);
     body.add(hatCrown);
 
-    const jacket = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.72, 0.35), blackMat);
-    jacket.position.set(0, -0.35, 0.4);
-    body.add(jacket);
+    body.add(buildTorsoWrap(blackMat, -0.35, 0.68, 9, Math.PI*1.3, 0.6));
 
     const shirt = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.24, 4), whiteMat);
     shirt.position.set(0, -0.05, 0.58);
@@ -798,15 +1030,15 @@ function applyJarvisCostume(){
 
     if(jarvisCostumeId === "pirate"){
 
-        parts = { body: buildPirateCostume() };
+        parts = buildPirateCostume();
 
     }else if(jarvisCostumeId === "dog"){
 
-        parts = { body: buildDogCostume() };
+        parts = buildDogCostume();
 
     }else if(jarvisCostumeId === "cat"){
 
-        parts = { body: buildCatCostume() };
+        parts = buildCatCostume();
 
     }else if(jarvisCostumeId === "robot"){
 
@@ -822,7 +1054,12 @@ function applyJarvisCostume(){
 
     }
 
-    if(!parts) return;
+    if(!parts){
+
+        updateJarvis3DAccessory();
+        return;
+
+    }
 
     if(parts.body){
 
@@ -846,6 +1083,8 @@ function applyJarvisCostume(){
     }
 
     if(parts.hideEye && jarvisEyeWhite) jarvisEyeWhite.visible = false;
+
+    updateJarvis3DAccessory();
 
 }
 

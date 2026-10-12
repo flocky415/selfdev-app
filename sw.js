@@ -1,4 +1,4 @@
-const CACHE = "selfdev-v54";
+const CACHE = "selfdev-v58";
 
 const FILES = [
   "./",

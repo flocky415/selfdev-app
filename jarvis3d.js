@@ -8,6 +8,10 @@ let jarvisBody, jarvisEye, jarvisEyeWhite;
 let jarvisArmL, jarvisArmR;
 let jarvisLegL, jarvisLegR;
 let jarvisEyeBaseScaleY = 1;
+let jarvisEyeSizeFactor = 1;
+let jarvisTailPivot = null;
+let jarvisCostumeBlinkEyes = [];
+let jarvisCostumeArmSwing = 1;
 let jarvisAccessory = null;
 let jarvisAccessoryType = null;
 let jarvisClock = 0;
@@ -196,7 +200,7 @@ function animateJarvis3D(){
 
     if(jarvisArmL && jarvisArmR){
 
-        const armSwing = Math.sin(jarvisClock*m.rotSpeed*1.6) * (0.18 + m.rotAmplitude*0.35);
+        const armSwing = Math.sin(jarvisClock*m.rotSpeed*1.6) * (0.18 + m.rotAmplitude*0.35) * jarvisCostumeArmSwing;
 
         jarvisArmL.rotation.z = Math.PI/2.3 + armSwing;
         jarvisArmR.rotation.z = -Math.PI/2.3 - armSwing;
@@ -221,13 +225,46 @@ function animateJarvis3D(){
             const blinkProgress = (blinkCycle-4.3)/0.2;
             const blinkScale = Math.abs(Math.sin(blinkProgress*Math.PI));
 
-            jarvisEyeWhite.scale.y = jarvisEyeBaseScaleY * (1 - blinkScale*0.85);
+            jarvisEyeWhite.scale.y = jarvisEyeBaseScaleY * jarvisEyeSizeFactor * (1 - blinkScale*0.85);
 
         }else{
 
-            jarvisEyeWhite.scale.y = jarvisEyeBaseScaleY;
+            jarvisEyeWhite.scale.y = jarvisEyeBaseScaleY * jarvisEyeSizeFactor;
 
         }
+
+    }
+
+    if(jarvisCostumeBlinkEyes.length){
+
+        const bc = jarvisClock % 4.5;
+        let blinkFactor = 1;
+
+        if(bc > 4.3){
+
+            blinkFactor = 1 - Math.abs(Math.sin(((bc-4.3)/0.2)*Math.PI))*0.85;
+
+        }
+
+        jarvisCostumeBlinkEyes.forEach(function(eye){
+
+            eye.scale.y = jarvisEyeBaseScaleY * blinkFactor;
+
+        });
+
+    }
+
+    if(jarvisTailPivot){
+
+        const tailCfg = jarvisTailPivot.userData || {};
+        const tailSpeed = tailCfg.speed || 12;
+        const tailAmpZ = tailCfg.ampZ || 0.5;
+        const tailAmpY = tailCfg.ampY || 0.35;
+
+        const wag = Math.sin(jarvisClock*tailSpeed);
+
+        jarvisTailPivot.rotation.z = wag*tailAmpZ;
+        jarvisTailPivot.rotation.y = Math.sin(jarvisClock*tailSpeed+1.2)*tailAmpY;
 
     }
 
@@ -694,53 +731,129 @@ function buildDogCostume(){
     const body = new THREE.Group();
 
     const earMat = new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.7 });
+    const earInnerMat = new THREE.MeshStandardMaterial({ color: 0xfda4af, roughness: 0.7 });
+    const furMat = new THREE.MeshStandardMaterial({ color: 0xc2884f, roughness: 0.8 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+
+    // Великі стоячі трикутні вушка
+    [-1, 1].forEach(function(side){
+
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.68, 4), earMat);
+        ear.position.set(side*0.4, 1.03, -0.02);
+        ear.rotation.y = Math.PI/4;
+        ear.rotation.z = -side*0.2;
+        ear.scale.set(1, 1, 0.55);
+        body.add(ear);
+
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.46, 4), earInnerMat);
+        inner.position.set(side*0.4, 0.99, 0.06);
+        inner.rotation.y = Math.PI/4;
+        inner.rotation.z = -side*0.2;
+        inner.scale.set(1, 1, 0.4);
+        body.add(inner);
+
+    });
+
+    // Два маленьких очка (не більші за ніс з язиком)
+    const blinkEyes = [];
 
     [-1, 1].forEach(function(side){
 
-        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), earMat);
-        ear.scale.set(0.5, 1.3, 0.4);
-        ear.position.set(side*0.55, 0.55, 0.05);
-        ear.rotation.z = side*0.4;
-        body.add(ear);
+        // Очі трохи заглиблені всередину, зіниці до центру, верхня повіка — спокійний погляд
+        const eye = new THREE.Group();
+        eye.position.set(side*0.17, 0.33, 0.572);
+        eye.rotation.y = side*0.28;
+        eye.scale.z = 0.55;
+
+        const white = new THREE.Mesh(new THREE.SphereGeometry(0.078, 12, 10), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        eye.add(white);
+
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 8), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 }));
+        pupil.position.set(0, 0, 0.045);
+        eye.add(pupil);
+
+        const shine = new THREE.Mesh(new THREE.SphereGeometry(0.013, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        shine.position.set(0.014, 0.016, 0.09);
+        eye.add(shine);
+
+        const lidMat = (typeof jarvisBody !== "undefined" && jarvisBody && jarvisBody.material) ? jarvisBody.material : new THREE.MeshStandardMaterial({ color: 0xc08a4a });
+        const lid = new THREE.Mesh(new THREE.SphereGeometry(0.083, 12, 8, 0, Math.PI*2, 0, Math.PI*0.2), lidMat);
+        lid.rotation.x = 0.15;
+        eye.add(lid);
+
+        body.add(eye);
+        blinkEyes.push(eye);
 
     });
 
-    const topknotMat = new THREE.MeshStandardMaterial({ color: 0xc2884f, roughness: 0.7 });
-
-    [0, 1, 2].forEach(function(i){
-
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.09-i*0.015, 8, 8), topknotMat);
-        puff.position.set(i*0.03, 0.85+i*0.09, 0.05-i*0.05);
-        body.add(puff);
-
-    });
-
-    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.02, 6, 12), new THREE.MeshStandardMaterial({ color: 0x84cc16 }));
-    tie.position.set(0, 0.78, 0.1);
-    tie.rotation.x = Math.PI/2;
-    body.add(tie);
-
+    // Комбінезон, що облягає тіло
     body.add(buildTorsoWrap(new THREE.MeshStandardMaterial({ color: 0x38bdf8 }), -0.35, 0.68, 9, Math.PI*1.3, 0.6));
 
     const patch = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfff7ed }));
     patch.scale.set(1, 1.1, 0.25);
-    patch.position.set(0, -0.35, 0.58);
+    patch.position.set(0, -0.38, 0.65);
     body.add(patch);
 
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 24), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-    collar.position.set(0, -0.02, 0);
+    // Ошийник навколо шиї (видимий, зовні тіла) + жетон збоку
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.63, 0.045, 8, 28), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+    collar.position.set(0, 0.0, 0);
     collar.rotation.x = Math.PI/2;
     body.add(collar);
 
-    const tag = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 }));
-    tag.position.set(0, -0.15, 0.42);
+    const tag = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 12), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 }));
+    tag.position.set(0.24, -0.09, 0.66);
+    tag.rotation.x = Math.PI/2;
     body.add(tag);
 
-    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.03), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
-    tongue.position.set(0, -0.15, 0.62);
-    tongue.rotation.x = -0.3;
+    // Світла морда
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), new THREE.MeshStandardMaterial({ color: 0xfde7c8, roughness: 0.8 }));
+    muzzle.scale.set(1.15, 0.75, 0.6);
+    muzzle.position.set(0, 0.03, 0.62);
+    body.add(muzzle);
+
+    // Собачий ніс
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), darkMat);
+    nose.scale.set(1.3, 0.9, 1);
+    nose.position.set(0, 0.1, 0.72);
+    body.add(nose);
+
+    const noseShine = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    noseShine.position.set(-0.035, 0.13, 0.8);
+    body.add(noseShine);
+
+    // Лінія рота
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 14, Math.PI), darkMat);
+    mouth.position.set(0, 0.03, 0.71);
+    mouth.rotation.z = Math.PI;
+    body.add(mouth);
+
+    // Язик
+    const tongue = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    tongue.scale.set(0.9, 1.5, 0.35);
+    tongue.position.set(0, -0.08, 0.7);
+    tongue.rotation.x = -0.25;
     body.add(tongue);
 
+    const tongueLine = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.1, 0.01), new THREE.MeshStandardMaterial({ color: 0xdb2777 }));
+    tongueLine.position.set(0, -0.08, 0.735);
+    body.add(tongueLine);
+
+    // Хвіст на шарнірі — виляє (обертається навколо основи)
+    const tailPivot = new THREE.Group();
+    tailPivot.position.set(0.4, -0.52, -0.43);
+    body.add(tailPivot);
+
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.075, 0.56, 10), furMat);
+    tail.position.set(0.227, 0.153, -0.056);
+    tail.rotation.z = -0.95;
+    tail.rotation.x = -0.35;
+    tailPivot.add(tail);
+
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfde7c8 }));
+    tailTip.position.set(0.454, 0.305, -0.112);
+    tailPivot.add(tailTip);
+
+    // Кістка в лапі
     const armR = new THREE.Group();
 
     [-0.06, 0.06].forEach(function(x){
@@ -756,7 +869,7 @@ function buildDogCostume(){
     shaft.rotation.z = Math.PI/2;
     armR.add(shaft);
 
-    return { body: body, armR: armR };
+    return { body: body, armR: armR, hideEye: true, blinkEyes: blinkEyes, tailPivot: tailPivot };
 
 }
 
@@ -764,40 +877,114 @@ function buildCatCostume(){
 
     const body = new THREE.Group();
 
-    const earOuterMat = new THREE.MeshStandardMaterial({ color: 0xf5c518 });
-    const earInnerMat = new THREE.MeshStandardMaterial({ color: 0xfda4af });
+    // Шерсть = колір скіна Джарвіза, щоб вушка й хвіст збігалися з головою.
+    // Тіло — капсула радіуса 0.62, тож передня поверхня обличчя на z≈0.6.
+    const furMat = (typeof jarvisBody !== "undefined" && jarvisBody && jarvisBody.material)
+        ? jarvisBody.material
+        : new THREE.MeshStandardMaterial({ color: 0xffd93d });
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfff7ed, roughness: 0.95 });
+    const pinkMat = new THREE.MeshStandardMaterial({ color: 0xfda4af, roughness: 0.8 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
 
+    // Вушка: сплюснутий конус, рожева середина і пухнасті кремові пучки шерсті
     [-1, 1].forEach(function(side){
 
-        const outer = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.28, 4), earOuterMat);
-        outer.position.set(side*0.32, 0.78, 0);
-        outer.rotation.y = Math.PI/4;
-        body.add(outer);
+        const ear = new THREE.Group();
+        ear.position.set(side*0.39, 0.8, 0);
+        ear.rotation.z = -side*0.28;
 
-        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.16, 4), earInnerMat);
-        inner.position.set(side*0.32, 0.75, 0.08);
-        inner.rotation.y = Math.PI/4;
-        body.add(inner);
+        const outer = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.46, 4), furMat);
+        outer.position.set(0, 0.23, 0);
+        outer.scale.set(1, 1, 0.4);
+        ear.add(outer);
+
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 4), pinkMat);
+        inner.position.set(0, 0.17, 0.04);
+        inner.scale.set(1, 1, 0.5);
+        ear.add(inner);
+
+        [[-0.045, 0.05], [0.045, 0.05], [0, 0.1], [0, 0.17]].forEach(function(p){
+
+            const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), creamMat);
+            tuft.scale.set(1, 1.35, 0.8);
+            tuft.position.set(p[0], p[1], 0.07);
+            ear.add(tuft);
+
+        });
+
+        body.add(ear);
 
     });
 
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.05, 4), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
-    nose.position.set(0, 0.02, 0.6);
-    nose.rotation.x = Math.PI/2;
-    body.add(nose);
-
-    const whiskerMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+    // Два ока: рознесені по боках, середнього розміру (не більші за решту обличчя)
+    const blinkEyes = [];
 
     [-1, 1].forEach(function(side){
 
-        for(let i=0;i<3;i++){
+        const eye = new THREE.Group();
+        eye.position.set(side*0.21, 0.38, 0.575);
+        eye.rotation.y = side*0.34;
+        eye.scale.z = 0.55;
 
-            const w = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.28, 4), whiskerMat);
-            w.position.set(side*0.55, 0.1-i*0.05, 0.45);
+        const white = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        eye.add(white);
+
+        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.4 }));
+        iris.position.set(0, 0, 0.06);
+        eye.add(iris);
+
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), darkMat);
+        pupil.scale.set(0.38, 1.15, 0.6);
+        pupil.position.set(0, 0, 0.115);
+        eye.add(pupil);
+
+        const shine = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        shine.position.set(0.035, 0.045, 0.138);
+        eye.add(shine);
+
+        body.add(eye);
+        blinkEyes.push(eye);
+
+    });
+
+    // Носик — по центру між очима, нижче
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 }));
+    nose.scale.set(1.2, 0.8, 0.7);
+    nose.position.set(0, 0.23, 0.615);
+    body.add(nose);
+
+    // Ротик у формі "w": коротка лінія від носика і дві дужки
+    const mouthLine = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.06, 6), darkMat);
+    mouthLine.position.set(0, 0.16, 0.622);
+    body.add(mouthLine);
+
+    [-1, 1].forEach(function(side){
+
+        const arc = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.011, 6, 14, Math.PI), darkMat);
+        arc.position.set(side*0.05, 0.13, 0.622);
+        arc.rotation.z = Math.PI;
+        body.add(arc);
+
+    });
+
+    // Вуса: по 3 з кожного боку, ростуть з щічок і відхиляються назад
+    // уздовж кривизни тіла, тож не торкаються ні очей, ні ротика
+    [-1, 1].forEach(function(side){
+
+        [[0.23, 0.2], [0.19, 0], [0.15, -0.2]].forEach(function(cfg){
+
+            const pivot = new THREE.Group();
+            pivot.position.set(side*0.17, cfg[0], 0.6);
+            pivot.rotation.set(0, side*0.35, side*cfg[1]);
+
+            const w = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.32, 5), darkMat);
             w.rotation.z = Math.PI/2;
-            body.add(w);
+            w.position.set(side*0.16, 0, 0);
+            pivot.add(w);
 
-        }
+            body.add(pivot);
+
+        });
 
     });
 
@@ -805,18 +992,28 @@ function buildCatCostume(){
 
     const patch = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfff7ed }));
     patch.scale.set(1, 1.1, 0.25);
-    patch.position.set(0, -0.35, 0.58);
+    patch.position.set(0, -0.35, 0.62);
     body.add(patch);
 
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.55, 8), new THREE.MeshStandardMaterial({ color: 0xffd93d }));
-    tail.position.set(0.55, -0.5, -0.3);
-    tail.rotation.z = Math.PI/3;
-    tail.rotation.x = -Math.PI/6;
-    body.add(tail);
+    // Хвостик: плавна вигнута трубка на шарнірі, повільно погойдується збоку від тіла
+    const tailPivot = new THREE.Group();
+    tailPivot.position.set(0.26, -0.72, -0.28);
+    tailPivot.userData = { speed: 2.4, ampZ: 0.35, ampY: 0.12 };
+    body.add(tailPivot);
 
-    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-    tailTip.position.set(0.8, -0.25, -0.5);
-    body.add(tailTip);
+    const tailCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0.14, -0.04, -0.1),
+        new THREE.Vector3(0.32, -0.02, -0.16),
+        new THREE.Vector3(0.44, 0.12, -0.14),
+        new THREE.Vector3(0.46, 0.3, -0.08)
+    ]);
+
+    tailPivot.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 24, 0.05, 8, false), furMat));
+
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 10), creamMat);
+    tailTip.position.copy(tailCurve.getPoint(1));
+    tailPivot.add(tailTip);
 
     const armR = new THREE.Group();
 
@@ -830,7 +1027,7 @@ function buildCatCostume(){
     fishTail.rotation.z = -Math.PI/2;
     armR.add(fishTail);
 
-    return { body: body, armR: armR };
+    return { body: body, armR: armR, hideEye: true, blinkEyes: blinkEyes, tailPivot: tailPivot };
 
 }
 
@@ -887,70 +1084,377 @@ function buildRobotCostume(){
 
 }
 
+// Рог вікінга: ланцюжок усічених конусів уздовж кривої Без'є — плавно звужується до кінчика
+function buildVikingHorn(side, hornMat, bandMat){
+
+    const horn = new THREE.Group();
+
+    const P0 = [0.47, 0.82], C1 = [0.93, 0.78], C2 = [1.02, 0.98], P3 = [0.92, 1.22];
+    const steps = 14;
+    const r0 = 0.085, r1 = 0.012;
+    const pts = [];
+
+    for(let i=0;i<=steps;i++){
+
+        const t = i/steps, u = 1-t;
+        const x = u*u*u*P0[0] + 3*u*u*t*C1[0] + 3*u*t*t*C2[0] + t*t*t*P3[0];
+        const y = u*u*u*P0[1] + 3*u*u*t*C1[1] + 3*u*t*t*C2[1] + t*t*t*P3[1];
+        pts.push(new THREE.Vector3(side*x, y, 0));
+
+    }
+
+    const up = new THREE.Vector3(0, 1, 0);
+
+    for(let i=0;i<steps;i++){
+
+        const a = pts[i], b = pts[i+1];
+        const ra = r0 + (r1-r0)*(i/steps);
+        const rb = r0 + (r1-r0)*((i+1)/steps);
+        const dir = b.clone().sub(a);
+        const len = dir.length();
+        dir.normalize();
+
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(rb, ra, len, 10), hornMat);
+        seg.position.copy(a).add(b).multiplyScalar(0.5);
+        seg.quaternion.setFromUnitVectors(up, dir);
+        horn.add(seg);
+
+        const joint = new THREE.Mesh(new THREE.SphereGeometry(ra, 10, 8), hornMat);
+        joint.position.copy(a);
+        horn.add(joint);
+
+    }
+
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(r1, 8, 6), hornMat);
+    tip.position.copy(pts[steps]);
+    horn.add(tip);
+
+    // золота обойма в основі рога
+    const dir0 = pts[2].clone().sub(pts[1]).normalize();
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.098, 0.022, 8, 20), bandMat);
+    band.position.copy(pts[1]);
+    band.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir0);
+    horn.add(band);
+
+    return horn;
+
+}
+
+// Капсула між двома точками (для передпліччя, що тримає щит)
+function buildVikingLimb(a, b, radius, mat){
+
+    const dir = b.clone().sub(a);
+    const len = dir.length();
+    dir.normalize();
+
+    const limb = new THREE.Mesh(new THREE.CapsuleGeometry(radius, Math.max(len - radius*2, 0.01), 6, 12), mat);
+    limb.position.copy(a).add(b).multiplyScalar(0.5);
+    limb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+    return limb;
+
+}
+
 function buildVikingCostume(){
 
     const body = new THREE.Group();
 
-    const metalMat = new THREE.MeshStandardMaterial({ color: 0x78716c, metalness: 0.5, roughness: 0.5 });
-    const hornMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e6 });
-    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 });
+    // Руки Джарвіза в спокої повернуті на ±REST. Піддерево "frame" гасить цей поворот,
+    // тож координати щита й сокири нижче — звичайні, відносно плеча.
+    const REST = Math.PI/2.3;
 
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 14, 0, Math.PI*2, 0, Math.PI*0.55), metalMat);
-    helmet.position.set(0, 0.55, 0);
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x9aa4b2, metalness: 0.55, roughness: 0.4 });
+    const darkSteelMat = new THREE.MeshStandardMaterial({ color: 0x4b5563, metalness: 0.6, roughness: 0.45 });
+    const edgeMat = new THREE.MeshStandardMaterial({ color: 0xc3ccd6, metalness: 0.65, roughness: 0.3 });
+    const hornMat = new THREE.MeshStandardMaterial({ color: 0xf3ead8, roughness: 0.6 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
+    const darkLeatherMat = new THREE.MeshStandardMaterial({ color: 0x3f2410, roughness: 0.85 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.75 });
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.7 });
+    const beardMat = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.95 });
+    const beardLightMat = new THREE.MeshStandardMaterial({ color: 0xa8713a, roughness: 0.95 });
+    const skinMat = (typeof jarvisBody !== "undefined" && jarvisBody && jarvisBody.material)
+        ? jarvisBody.material
+        : new THREE.MeshStandardMaterial({ color: 0xffd93d });
+
+    // ----- Шолом: купол над лобом, обідок і гребінь -----
+    const helmet = new THREE.Group();
+    helmet.name = "helmet";
+
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.68, 28, 18, 0, Math.PI*2, 0, 1.08), steelMat);
+    dome.position.set(0, 0.36, 0);
+    helmet.add(dome);
+
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 10, 44), goldMat);
+    rim.position.set(0, 0.68, 0);
+    rim.rotation.x = Math.PI/2;
+    helmet.add(rim);
+
+    const ridgeWrap = new THREE.Group();
+    ridgeWrap.position.set(0, 0.36, 0);
+    ridgeWrap.rotation.y = Math.PI/2;
+    const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.025, 8, 36, Math.PI - 0.95), darkSteelMat);
+    ridge.rotation.z = 0.475;
+    ridgeWrap.add(ridge);
+    helmet.add(ridgeWrap);
+
     body.add(helmet);
 
+    // ----- Роги -----
     [-1, 1].forEach(function(side){
 
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.3, 8), hornMat);
-        horn.position.set(side*0.38, 0.8, 0.04);
-        horn.rotation.z = side*0.45;
-        horn.rotation.x = -0.15;
+        const horn = buildVikingHorn(side, hornMat, goldMat);
+        horn.name = side < 0 ? "hornL" : "hornR";
         body.add(horn);
 
     });
 
+    // ----- Густа борода: основна маса, щоки, вуса і пасма донизу -----
+    const beard = new THREE.Group();
+    beard.name = "beard";
+
+    const beardMain = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 20), beardMat);
+    beardMain.scale.set(0.33, 0.3, 0.24);
+    beardMain.position.set(0, -0.2, 0.53);
+    beard.add(beardMain);
+
+    const beardLow = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), beardMat);
+    beardLow.scale.set(0.28, 0.13, 0.2);
+    beardLow.position.set(0, -0.38, 0.52);
+    beard.add(beardLow);
+
     [-1, 1].forEach(function(side){
 
-        const fur = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), new THREE.MeshStandardMaterial({ color: 0xf5f5f4 }));
-        fur.position.set(side*0.65, 0.08, 0);
-        body.add(fur);
+        // щоки — зливаються з основною масою, а не стирчать окремими плямами
+        const cheek = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), beardMat);
+        cheek.scale.set(0.15, 0.2, 0.17);
+        cheek.position.set(side*0.24, -0.1, 0.47);
+        beard.add(cheek);
+
+        const stache = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), beardLightMat);
+        stache.scale.set(0.17, 0.06, 0.11);
+        stache.position.set(side*0.13, -0.03, 0.7);
+        stache.rotation.z = -side*0.3;
+        beard.add(stache);
 
     });
 
-    body.add(buildTorsoWrap(leatherMat, -0.35, 0.66, 9, Math.PI*1.3, 0.6));
+    // пасма: [x, z, висота, радіус]
+    [[-0.24, 0.55, 0.11, 0.065], [-0.16, 0.6, 0.14, 0.07], [-0.08, 0.64, 0.16, 0.075], [0, 0.66, 0.18, 0.08],
+     [0.08, 0.64, 0.16, 0.075], [0.16, 0.6, 0.14, 0.07], [0.24, 0.55, 0.11, 0.065]].forEach(function(t, i){
 
-    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.04), goldMat);
-    buckle.position.set(0, -0.35, 0.58);
-    body.add(buckle);
+        const tuft = new THREE.Mesh(new THREE.ConeGeometry(t[3], t[2], 10), i%2 ? beardLightMat : beardMat);
+        tuft.rotation.x = Math.PI;
+        tuft.position.set(t[0], -0.42 - t[2]/2, t[1]);
+        beard.add(tuft);
 
-    const beard = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10), new THREE.MeshStandardMaterial({ color: 0x8a5a2b }));
-    beard.scale.set(0.85, 1.1, 0.55);
-    beard.position.set(0, -0.15, 0.4);
+    });
+
     body.add(beard);
 
+    // ----- Пояс і шкіряна спідничка (нижче бороди, щоб не перетиналися) -----
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.575, 0.04, 8, 40), darkLeatherMat);
+    belt.name = "belt";
+    belt.position.set(0, -0.66, 0);
+    belt.rotation.x = Math.PI/2;
+    body.add(belt);
+
+    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.11, 0.05), goldMat);
+    buckle.name = "buckle";
+    buckle.position.set(0, -0.66, 0.63);
+    body.add(buckle);
+
+    const skirt = buildTorsoWrap(leatherMat, -0.79, 0.22, 9, Math.PI*1.3, 0.58);
+    skirt.name = "skirt";
+    body.add(skirt);
+
+    // ----- Ліва рука: великий круглий щит попереду, на передпліччі -----
     const armL = new THREE.Group();
-    const shieldFace = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 16), leatherMat);
-    shieldFace.position.set(0, 0.15, 0);
-    shieldFace.rotation.x = Math.PI/2;
-    armL.add(shieldFace);
+    const frameL = new THREE.Group();
+    frameL.name = "frameL";
+    frameL.rotation.z = -REST;
+    armL.add(frameL);
 
-    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), goldMat);
-    boss.position.set(0, 0.15, 0.03);
-    armL.add(boss);
+    frameL.add(buildVikingLimb(new THREE.Vector3(-0.2, 0.04, 0), new THREE.Vector3(-0.05, -0.45, 0.8), 0.09, skinMat));
 
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), skinMat);
+    elbow.position.set(-0.2, 0.04, 0);
+    frameL.add(elbow);
+
+    const shield = new THREE.Group();
+    shield.name = "shield";
+    shield.position.set(-0.06, -0.45, 0.84);
+
+    const SR = 0.48;
+
+    const shieldBase = new THREE.Mesh(new THREE.CylinderGeometry(SR, SR, 0.06, 40), woodMat);
+    shieldBase.rotation.x = Math.PI/2;
+    shield.add(shieldBase);
+
+    const shieldPaint = new THREE.Mesh(new THREE.CylinderGeometry(SR*0.88, SR*0.88, 0.066, 40), redMat);
+    shieldPaint.rotation.x = Math.PI/2;
+    shield.add(shieldPaint);
+
+    const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(SR, 0.04, 10, 48), steelMat);
+    shield.add(shieldRim);
+
+    [0, Math.PI/4, Math.PI/2, Math.PI*0.75].forEach(function(a){
+
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(SR*1.6, 0.045, 0.02), creamMat);
+        bar.position.z = 0.04;
+        bar.rotation.z = a;
+        shield.add(bar);
+
+    });
+
+    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), steelMat);
+    boss.scale.set(1, 1, 0.6);
+    boss.position.z = 0.06;
+    shield.add(boss);
+
+    frameL.add(shield);
+
+    // ----- Права рука: велика сокира, тримає за держак збоку від тіла -----
     const armR = new THREE.Group();
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.3, 8), leatherMat);
-    handle.position.set(0, 0.25, 0);
-    armR.add(handle);
+    const frameR = new THREE.Group();
+    frameR.name = "frameR";
+    frameR.rotation.z = REST;
+    armR.add(frameR);
 
-    const axeHead = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.15, 4), metalMat);
-    axeHead.position.set(0.07, 0.38, 0);
-    axeHead.rotation.z = Math.PI/2;
-    axeHead.scale.set(1, 0.5, 1);
-    armR.add(axeHead);
+    const axe = new THREE.Group();
+    axe.name = "axe";
+    axe.position.set(0.22, -0.05, 0);
 
-    return { body: body, armL: armL, armR: armR };
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.56, 10), leatherMat);
+    axe.add(shaft);
+
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.3, 10), darkLeatherMat);
+    grip.position.y = 0.05;
+    axe.add(grip);
+
+    const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), goldMat);
+    pommel.position.y = -0.8;
+    axe.add(pommel);
+
+    [0.19, 0.78].forEach(function(y){
+
+        const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.05, 10), goldMat);
+        collar.position.y = y;
+        axe.add(collar);
+
+    });
+
+    // лезо — півмісяць: опукла дуга назовні, увігнута до держака (кінчики торкаються держака)
+    const bladePts = [];
+    const BSTEPS = 20;
+
+    for(let i=0;i<=BSTEPS;i++){
+
+        const a = Math.PI*i/BSTEPS;
+        bladePts.push(new THREE.Vector2(0.52*Math.sin(a), 0.5 + 0.3*Math.cos(a)));
+
+    }
+
+    for(let i=BSTEPS-1;i>=1;i--){
+
+        const a = Math.PI*i/BSTEPS;
+        bladePts.push(new THREE.Vector2(0.27*Math.sin(a), 0.5 + 0.3*Math.cos(a)));
+
+    }
+
+    const bladeGroup = new THREE.Group();
+    bladeGroup.position.set(0, 0, -0.025);
+
+    const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(new THREE.Shape(bladePts), { depth: 0.05, bevelEnabled: false }), edgeMat);
+    bladeGroup.add(blade);
+
+    [0.24, 0.76].forEach(function(y){
+
+        const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), goldMat);
+        rivet.position.set(0.03, y, 0.05);
+        bladeGroup.add(rivet);
+
+    });
+
+    axe.add(bladeGroup);
+    frameR.add(axe);
+
+    return { body: body, armL: armL, armR: armR, eyeScale: 0.5, eyeY: 0.38, armSwing: 0.25 };
+
+}
+
+// Золотий ланцюжок: тонкі циліндри між точками з кульками-вузликами в стиках
+function buildTuxedoChain(points, radius, mat){
+
+    const group = new THREE.Group();
+    const up = new THREE.Vector3(0, 1, 0);
+
+    for(let i=0;i<points.length-1;i++){
+
+        const a = points[i], b = points[i+1];
+        const dir = b.clone().sub(a);
+        const len = dir.length();
+        dir.normalize();
+
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, len, 6), mat);
+        seg.position.copy(a).add(b).multiplyScalar(0.5);
+        seg.quaternion.setFromUnitVectors(up, dir);
+        group.add(seg);
+
+        const link = new THREE.Mesh(new THREE.SphereGeometry(radius*1.5, 8, 6), mat);
+        link.position.copy(a);
+        group.add(link);
+
+    }
+
+    return group;
+
+}
+
+// Оболонка, що точно повторює капсулу тіла Джарвіза (циліндр r=0.62 на y∈[-0.35, 0.35]
+// і півсфери з центрами (0, ±0.35, 0)). Одяг із такої оболонки лягає по фігурі, а не
+// стирчить пласкими дошками. Спереду (z+) можна залишити клин-розріз (gapHalf — пів-кут),
+// а з gapOnly=true навпаки отримати лише цей клин (для сорочки в розрізі піджака).
+// bandFrom/bandTo (рад) — вузька смуга біля краю розрізу (для лацканів).
+function buildFittedShell(mat, R, yTop, yBottom, gapHalf, gapOnly, bandFrom, bandTo){
+
+    const group = new THREE.Group();
+    const SIDES = 48;
+    const lowCyl = Math.max(yBottom, -0.35);
+
+    // кути: [початок, довжина]
+    let a0, aLen;
+
+    if(bandFrom !== undefined){
+        a0 = bandFrom; aLen = bandTo - bandFrom;
+    }else if(gapOnly){
+        a0 = -gapHalf; aLen = gapHalf*2;
+    }else{
+        a0 = gapHalf; aLen = Math.PI*2 - gapHalf*2;
+    }
+
+    if(yTop > -0.35){
+
+        const h = yTop - lowCyl;
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, h, SIDES, 1, true, a0, aLen), mat);
+        cyl.position.set(0, (yTop + lowCyl)/2, 0);
+        group.add(cyl);
+
+    }
+
+    if(yBottom < -0.35){
+
+        // у сфері фронт — phi = π/2, а в циліндрі — theta = 0; переводимо кути
+        const thetaB = Math.acos(Math.max(-1, Math.min(1, (yBottom + 0.35)/R)));
+        const sph = new THREE.Mesh(new THREE.SphereGeometry(R, SIDES, 20, Math.PI/2 + a0, aLen, Math.PI/2, thetaB - Math.PI/2), mat);
+        sph.position.set(0, -0.35, 0);
+        group.add(sph);
+
+    }
+
+    return group;
 
 }
 
@@ -958,46 +1462,305 @@ function buildTuxedoCostume(){
 
     const body = new THREE.Group();
 
+    // Руки Джарвіза в спокої повернуті на ±REST. Піддерево "frame" гасить цей поворот,
+    // тож координати тростини нижче — звичайні, відносно плеча.
+    const REST = Math.PI/2.3;
+
     const blackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
-    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+    const satinMat = new THREE.MeshStandardMaterial({ color: 0x273449, roughness: 0.3 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.7 });
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfff7ed, roughness: 0.6 });
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 });
+    const burgundyMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.6 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x2b1b12, roughness: 0.9 });
+    const smileMat = new THREE.MeshStandardMaterial({ color: 0x4a1d1d, roughness: 0.6 });
 
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 16), blackMat);
+    // ----- Циліндр: поля ширші за голову, щоб було видно -----
+    const hat = new THREE.Group();
+    hat.name = "hat";
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 36), blackMat);
     brim.position.set(0, 0.8, 0);
-    body.add(brim);
+    hat.add(brim);
 
-    const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.45, 16), blackMat);
-    hatCrown.position.set(0, 1.05, 0);
-    body.add(hatCrown);
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.45, 32), blackMat);
+    crown.position.set(0, 1.05, 0);
+    hat.add(crown);
 
-    body.add(buildTorsoWrap(blackMat, -0.35, 0.68, 9, Math.PI*1.3, 0.6));
+    const hatBand = new THREE.Mesh(new THREE.CylinderGeometry(0.303, 0.305, 0.08, 32), burgundyMat);
+    hatBand.position.set(0, 0.9, 0);
+    hat.add(hatBand);
 
-    const shirt = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.24, 4), whiteMat);
-    shirt.position.set(0, -0.05, 0.58);
-    shirt.rotation.x = Math.PI;
-    shirt.scale.set(1, 1, 0.3);
+    body.add(hat);
+
+    // ----- Піджак, сорочка, брюки: концентричні оболонки навколо тіла (не перетинаються) -----
+    const TOP = -0.22, HEM = -0.81;
+    const GAP = 0.3;
+    const R_JACKET = 0.65, R_SHIRT = 0.645, R_LAPEL = 0.655, R_PANTS = 0.64;
+
+    const jacket = buildFittedShell(blackMat, R_JACKET, TOP, HEM, GAP, false);
+    jacket.name = "jacket";
+    body.add(jacket);
+
+    const shirt = buildFittedShell(whiteMat, R_SHIRT, TOP, HEM, GAP, true);
+    shirt.name = "shirt";
     body.add(shirt);
 
-    const bow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.04), blackMat);
-    bow.position.set(0, -0.02, 0.6);
+    const lapels = new THREE.Group();
+    lapels.name = "lapels";
+    lapels.add(buildFittedShell(satinMat, R_LAPEL, TOP, HEM, GAP, false, GAP, GAP + 0.2));
+    lapels.add(buildFittedShell(satinMat, R_LAPEL, TOP, HEM, GAP, false, Math.PI*2 - GAP - 0.2, Math.PI*2 - GAP));
+    body.add(lapels);
+
+    // низ тіла під піджаком — штани (верхній край ховається під подолом)
+    const pelvis = new THREE.Mesh(new THREE.SphereGeometry(R_PANTS, 48, 20, 0, Math.PI*2, Math.acos((HEM + 0.01 + 0.35)/R_PANTS), Math.PI - Math.acos((HEM + 0.01 + 0.35)/R_PANTS)), blackMat);
+    pelvis.name = "trousers";
+    pelvis.position.set(0, -0.35, 0);
+    body.add(pelvis);
+
+    // висота поверхні сорочки на (x, y) — по ній кладемо ланцюжок, годинник, гудзики
+    function shirtZ(x, y){
+
+        const dy = y < -0.35 ? (y + 0.35) : 0;
+        return Math.sqrt(Math.max(0.01, R_SHIRT*R_SHIRT - x*x - dy*dy));
+
+    }
+
+    // ----- Метелик -----
+    const bow = new THREE.Group();
+    bow.name = "bow";
+    bow.position.set(0, -0.27, shirtZ(0, -0.27) + 0.03);
+
+    [-1, 1].forEach(function(side){
+
+        const wing = new THREE.Mesh(new THREE.ConeGeometry(0.062, 0.1, 4), blackMat);
+        wing.rotation.z = side*Math.PI/2;
+        wing.position.set(side*0.075, 0, 0);
+        wing.scale.set(1, 1, 0.55);
+        bow.add(wing);
+
+    });
+
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), blackMat);
+    bow.add(knot);
+
     body.add(bow);
 
+    // ----- Гудзики на сорочці -----
+    const studs = new THREE.Group();
+    studs.name = "studs";
+
+    [-0.37, -0.62].forEach(function(y){
+
+        const stud = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), blackMat);
+        stud.position.set(0, y, shirtZ(0, y) + 0.012);
+        studs.add(stud);
+
+    });
+
+    body.add(studs);
+
+    // ----- Вуса (закручені догори), посмішка і маленька борідка -----
+    const faceHair = new THREE.Group();
+    faceHair.name = "facehair";
+
+    [-1, 1].forEach(function(side){
+
+        const stache = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), hairMat);
+        stache.scale.set(0.11, 0.032, 0.055);
+        stache.position.set(side*0.1, 0.12, 0.63);
+        stache.rotation.z = side*0.35;
+        faceHair.add(stache);
+
+        const curl = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), hairMat);
+        curl.position.set(side*0.2, 0.15, 0.62);
+        faceHair.add(curl);
+
+    });
+
+    const goatee = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.1, 10), hairMat);
+    goatee.rotation.x = Math.PI;
+    goatee.scale.set(1, 1, 0.8);
+    goatee.position.set(0, -0.11, 0.6);
+    faceHair.add(goatee);
+
+    body.add(faceHair);
+
+    // посмішка під вусами: дуга внизу кола, кінці трохи вгору
+    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.011, 8, 24, 1.8), smileMat);
+    smile.name = "smile";
+    smile.position.set(0, 0.09, 0.62);
+    smile.rotation.z = Math.PI*1.5 - 0.9;
+    body.add(smile);
+
+    // ----- Кишеньковий годинник на ланцюжку -----
+    const chainStart = new THREE.Vector3(-0.17, -0.4, 0);
+    const chainEnd = new THREE.Vector3(0.12, -0.46, 0);
+    const chainPts = [];
+    const CH = 14;
+
+    for(let i=0;i<=CH;i++){
+
+        const t = i/CH;
+        const x = chainStart.x + (chainEnd.x - chainStart.x)*t;
+        const y = chainStart.y + (chainEnd.y - chainStart.y)*t - 0.06*4*t*(1-t);
+
+        chainPts.push(new THREE.Vector3(x, y, shirtZ(x, y) + 0.025 + 0.015*t));
+
+    }
+
+    const chain = buildTuxedoChain(chainPts, 0.008, goldMat);
+    chain.name = "chain";
+    body.add(chain);
+
+    const chainButton = new THREE.Mesh(new THREE.SphereGeometry(0.024, 10, 8), goldMat);
+    chainButton.name = "chainButton";
+    chainButton.position.set(chainStart.x, chainStart.y, shirtZ(chainStart.x, chainStart.y) + 0.02);
+    body.add(chainButton);
+
+    const watch = new THREE.Group();
+    watch.name = "watch";
+    watch.position.set(0.12, -0.62, shirtZ(0.12, -0.5) + 0.08);
+
+    const wCase = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.035, 32), goldMat);
+    wCase.rotation.x = Math.PI/2;
+    watch.add(wCase);
+
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.04, 32), creamMat);
+    dial.rotation.x = Math.PI/2;
+    watch.add(dial);
+
+    [[0, 0.05], [0.05, 0], [0, -0.05], [-0.05, 0]].forEach(function(p){
+
+        const tick = new THREE.Mesh(new THREE.BoxGeometry(0.009, 0.016, 0.004), blackMat);
+        tick.position.set(p[0], p[1], 0.021);
+        tick.rotation.z = p[0] ? Math.PI/2 : 0;
+        watch.add(tick);
+
+    });
+
+    const minuteHand = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.05, 0.006), blackMat);
+    minuteHand.position.set(0, 0.022, 0.024);
+    watch.add(minuteHand);
+
+    const hourHand = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.034, 0.006), blackMat);
+    hourHand.position.set(0.014, -0.006, 0.026);
+    hourHand.rotation.z = Math.PI/2 + 0.5;
+    watch.add(hourHand);
+
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.009, 8, 6), goldMat);
+    pin.position.z = 0.028;
+    watch.add(pin);
+
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.03, 10), goldMat);
+    stem.position.set(0, 0.088, 0);
+    watch.add(stem);
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.007, 8, 18), goldMat);
+    ring.position.set(0, 0.125, 0);
+    watch.add(ring);
+
+    body.add(watch);
+
+    // ----- Рукави з білими манжетами -----
+    function buildSleeve(){
+
+        const g = new THREE.Group();
+        g.name = "sleeve";
+
+        const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.26, 20), blackMat);
+        g.add(sleeve);
+
+        const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.045, 20), whiteMat);
+        cuff.position.y = 0.152;
+        g.add(cuff);
+
+        return g;
+
+    }
+
+    const armL = new THREE.Group();
+    armL.add(buildSleeve());
+
+    // ----- Права рука: тростина з золотим гачком -----
     const armR = new THREE.Group();
+    armR.add(buildSleeve());
 
-    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 8), blackMat);
-    cane.position.set(0, -0.15, 0);
-    armR.add(cane);
+    const frameR = new THREE.Group();
+    frameR.name = "frameR";
+    frameR.rotation.z = REST;
+    armR.add(frameR);
 
-    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldMat);
-    handle.position.set(0, 0.13, 0);
-    armR.add(handle);
+    const cane = new THREE.Group();
+    cane.name = "cane";
+    cane.position.set(0.22, 0, 0);
 
-    return { body: body, armR: armR };
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.275, 10), blackMat);
+    shaft.position.y = -0.5375;
+    cane.add(shaft);
+
+    const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.05, 10), goldMat);
+    ferrule.position.y = -1.15;
+    cane.add(ferrule);
+
+    const crook = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 8, 20, Math.PI), goldMat);
+    crook.position.set(0.07, 0.1, 0);
+    cane.add(crook);
+
+    const crookEnd = new THREE.Mesh(new THREE.SphereGeometry(0.026, 10, 8), goldMat);
+    crookEnd.position.set(0.14, 0.1, 0);
+    cane.add(crookEnd);
+
+    const caneRing = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.03, 10), goldMat);
+    caneRing.position.y = 0.06;
+    cane.add(caneRing);
+
+    frameR.add(cane);
+
+    // ----- Довші ноги: штанини й туфлі їдуть разом із ногою (ноги розмахують) -----
+    // ноги масштабуються по Y; "legFix" повертає дочірнім деталям справжні розміри
+    const LEG_SCALE = 1.3;
+
+    function buildLeg(name, side){
+
+        const leg = new THREE.Group();
+        leg.name = name;
+
+        const fix = new THREE.Group();
+        fix.scale.set(1, 1/LEG_SCALE, 1);
+        leg.add(fix);
+
+        const trouser = new THREE.Mesh(new THREE.CylinderGeometry(0.108, 0.112, 0.4, 20), blackMat);
+        trouser.position.y = 0.01;
+        fix.add(trouser);
+
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.36, 0.03), satinMat);
+        stripe.position.set(side*0.108, 0.01, 0);
+        fix.add(stripe);
+
+        const shoe = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), blackMat);
+        shoe.name = name + "Shoe";
+        shoe.scale.set(0.115, 0.065, 0.165);
+        shoe.position.set(0, -0.21, 0.045);
+        fix.add(shoe);
+
+        return leg;
+
+    }
+
+    return {
+        body: body, armL: armL, armR: armR,
+        legL: buildLeg("trouserL", -1), legR: buildLeg("trouserR", 1),
+        legScale: LEG_SCALE, legY: -0.97,
+        eyeScale: 0.5, eyeY: 0.4, armSwing: 0.5
+    };
 
 }
 
 let jarvisCostumeArmL = null;
 let jarvisCostumeArmR = null;
+let jarvisCostumeLegL = null;
+let jarvisCostumeLegR = null;
 
 function applyJarvisCostume(){
 
@@ -1024,7 +1787,37 @@ function applyJarvisCostume(){
 
     }
 
-    if(jarvisEyeWhite) jarvisEyeWhite.visible = true;
+    if(jarvisCostumeLegL && jarvisLegL){
+
+        jarvisLegL.remove(jarvisCostumeLegL);
+        jarvisCostumeLegL = null;
+
+    }
+
+    if(jarvisCostumeLegR && jarvisLegR){
+
+        jarvisLegR.remove(jarvisCostumeLegR);
+        jarvisCostumeLegR = null;
+
+    }
+
+    // ноги повертаємо до стандартної довжини; костюм може їх подовжити (legScale/legY)
+    if(jarvisLegL){ jarvisLegL.scale.set(1, 1, 1); jarvisLegL.position.y = -0.92; }
+    if(jarvisLegR){ jarvisLegR.scale.set(1, 1, 1); jarvisLegR.position.y = -0.92; }
+
+    if(jarvisEyeWhite){
+
+        jarvisEyeWhite.visible = true;
+        jarvisEyeWhite.scale.x = 1;
+        jarvisEyeWhite.scale.z = 1;
+        jarvisEyeWhite.position.y = 0.28;
+
+    }
+
+    jarvisEyeSizeFactor = 1;
+    jarvisCostumeArmSwing = 1;
+    jarvisTailPivot = null;
+    jarvisCostumeBlinkEyes = [];
 
     let parts = null;
 
@@ -1082,7 +1875,54 @@ function applyJarvisCostume(){
 
     }
 
+    if(parts.legL && jarvisLegL){
+
+        jarvisCostumeLegL = parts.legL;
+        jarvisLegL.add(jarvisCostumeLegL);
+
+    }
+
+    if(parts.legR && jarvisLegR){
+
+        jarvisCostumeLegR = parts.legR;
+        jarvisLegR.add(jarvisCostumeLegR);
+
+    }
+
+    if(parts.legScale && jarvisLegL && jarvisLegR){
+
+        jarvisLegL.scale.y = parts.legScale;
+        jarvisLegR.scale.y = parts.legScale;
+
+        if(parts.legY !== undefined){
+
+            jarvisLegL.position.y = parts.legY;
+            jarvisLegR.position.y = parts.legY;
+
+        }
+
+    }
+
     if(parts.hideEye && jarvisEyeWhite) jarvisEyeWhite.visible = false;
+
+    if(parts.armSwing !== undefined) jarvisCostumeArmSwing = parts.armSwing;
+
+    if(parts.tailPivot) jarvisTailPivot = parts.tailPivot;
+    if(parts.blinkEyes) jarvisCostumeBlinkEyes = parts.blinkEyes;
+
+    if(parts.eyeScale && jarvisEyeWhite){
+
+        jarvisEyeSizeFactor = parts.eyeScale;
+        jarvisEyeWhite.scale.x = parts.eyeScale;
+        jarvisEyeWhite.scale.z = parts.eyeScale;
+
+    }
+
+    if(parts.eyeY !== undefined && jarvisEyeWhite){
+
+        jarvisEyeWhite.position.y = parts.eyeY;
+
+    }
 
     updateJarvis3DAccessory();
 

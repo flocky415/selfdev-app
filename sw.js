@@ -16,7 +16,7 @@ try{
 }
 
 // Змінюй номер версії, коли оновлюєш файли, щоб користувачі отримали свіжий кеш
-const CACHE = "selfdev-v70";
+const CACHE = "selfdev-v71";
 const WIDGET_CACHE = "selfdev-widget";
 const WIDGET_TAG = "selfdev-daily-widget";
 

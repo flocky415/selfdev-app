@@ -344,9 +344,31 @@ function setupJarvisKeyboardFix(){
 
 }
 
+// Закриття чату: клік по затемненому фону поза вікном чату або клавіша Esc
+function setupJarvisChatClosing(){
+
+    const modal = document.getElementById("jarvisChatModal");
+
+    if(!modal) return;
+
+    modal.addEventListener("click", e=>{
+
+        if(e.target === modal) closeJarvisChat();
+
+    });
+
+    document.addEventListener("keydown", e=>{
+
+        if(e.key === "Escape" && modal.classList.contains("show")) closeJarvisChat();
+
+    });
+
+}
+
 try{
 
     setupJarvisKeyboardFix();
+    setupJarvisChatClosing();
 
 }catch(e){
 

@@ -1294,3 +1294,7 @@ li.just-done .swipe-fg{ animation:donePulse .6s ease-out; }
   font-size:11px;
 }
 
+
+/* Кнопка закриття чату завжди видима й клікабельна */
+.jarvis-chat-header{ position:relative; z-index:2; }
+.jarvis-chat-header button{ width:auto !important; margin:0 !important; min-width:36px; min-height:36px; cursor:pointer; }

@@ -1,0 +1,121 @@
+// SelfDev — правила безпеки Firestore.
+// © 2026 Roman Chelyk. Усі права захищено.
+//
+// ЯК ЗАСТОСУВАТИ: Firebase Console → Build → Firestore Database → Rules →
+// встав увесь цей файл → Publish. (Без цього база лишається відкритою для всіх,
+// хто знає projectId з firebase-config.js.)
+//
+// Що гарантують ці правила:
+//  • профіль users/{код} може створити і змінити лише його власник (ownerUid);
+//  • профілі читаються лише за точним кодом, перелічити всіх користувачів не можна;
+//  • спільну серію pairs/{КОД1_КОД2} читає і оновлює лише власник одного з двох кодів,
+//    і лічильник може зрости щонайбільше на 1 за запис;
+//  • у документах можуть бути тільки очікувані поля з перевіреними типами й межами.
+//
+// Чого вони НЕ можуть гарантувати: значення level/xp/streak надсилає сам клієнт,
+// тому чесність рейтингу між друзями тримається на довірі (як і будь-яка
+// клієнтська гра без власного сервера).
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validCode(code) {
+      return code.matches('^[A-HJ-NP-Z2-9]{6,10}$');
+    }
+
+    function validProfile(d) {
+      return d.keys().hasOnly(['name','level','streak','xp','todayPercent','todayDate','avatar','updatedAt','ownerUid'])
+        && d.keys().hasAll(['name','level','streak','xp','todayPercent','avatar','updatedAt','ownerUid'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 30
+        && d.level is int && d.level >= 1 && d.level <= 10000
+        && d.streak is int && d.streak >= 0 && d.streak <= 100000
+        && d.xp is int && d.xp >= 0 && d.xp < 1000000
+        && d.todayPercent is int && d.todayPercent >= 0 && d.todayPercent <= 100
+        && d.avatar is string && d.avatar.size() <= 8
+        && d.updatedAt is number
+        && (!('todayDate' in d) || (d.todayDate is string && d.todayDate.size() == 10));
+    }
+
+    function ownsCode(code) {
+      return validCode(code)
+        && exists(/databases/$(database)/documents/users/$(code))
+        && get(/databases/$(database)/documents/users/$(code)).data.ownerUid == request.auth.uid;
+    }
+
+    function ownsPair(pairKey) {
+      return signedIn()
+        && pairKey.matches('^[A-HJ-NP-Z2-9]{6,10}_[A-HJ-NP-Z2-9]{6,10}$')
+        && (ownsCode(pairKey.split('_')[0]) || ownsCode(pairKey.split('_')[1]));
+    }
+
+    match /users/{code} {
+
+      // Прочитати профіль можна лише знаючи точний код; список усіх — заборонено
+      allow get: if signedIn() && validCode(code);
+      allow list: if false;
+
+      allow create: if signedIn()
+        && validCode(code)
+        && request.resource.data.ownerUid == request.auth.uid
+        && validProfile(request.resource.data);
+
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && validProfile(request.resource.data);
+
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pairs/{pairKey} {
+
+      allow get: if ownsPair(pairKey);
+      allow list: if false;
+
+      allow create, update: if ownsPair(pairKey)
+        && request.resource.data.keys().hasOnly(['jointStreak','lastJointDate'])
+        && request.resource.data.jointStreak is int
+        && request.resource.data.jointStreak >= 1
+        && request.resource.data.jointStreak <= (resource == null ? 1 : resource.data.jointStreak + 1)
+        && request.resource.data.lastJointDate is string
+        && request.resource.data.lastJointDate.size() == 10;
+
+      allow delete: if false;
+    }
+
+    // Синхронізація між пристроями: userdata/{uid} читає і пише лише власник,
+    // і лише після входу через Google (не анонімно)
+    match /userdata/{uid} {
+
+      function isOwner() {
+        return signedIn()
+          && request.auth.uid == uid
+          && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      }
+
+      allow get, delete: if isOwner();
+      allow list: if false;
+
+      allow create, update: if isOwner()
+        && request.resource.data.keys().hasOnly(['v','rev','updatedAt','device','data'])
+        && request.resource.data.keys().hasAll(['v','rev','updatedAt','data'])
+        && request.resource.data.v is int
+        && request.resource.data.rev is string && request.resource.data.rev.size() <= 32
+        && request.resource.data.updatedAt is number
+        && (!('device' in request.resource.data) || (request.resource.data.device is string && request.resource.data.device.size() <= 20))
+        && request.resource.data.data is map
+        && request.resource.data.data.size() <= 60;
+    }
+
+    // Усе інше заборонено
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,68 @@
+SelfDev
+Copyright (c) 2026 Roman Chelyk. Усі права захищено. / All rights reserved.
+
+================================================================
+УКРАЇНСЬКОЮ
+================================================================
+
+Цей програмний код, а також усі супровідні файли (зображення, стилі, тексти,
+конфігурації, 3D-моделі та цитати, створені автором) — разом «Програма» —
+є власністю Roman Chelyk («Автор») і захищені авторським правом.
+
+Жодних прав чи ліцензій на Програму не надається. Без попередньої письмової
+згоди Автора забороняється:
+
+  1. копіювати, відтворювати, завантажувати чи зберігати Програму або її частини;
+  2. змінювати, адаптувати, перекладати, створювати похідні твори;
+  3. поширювати, публікувати, розміщувати на власних серверах чи сайтах,
+     передавати, продавати, здавати в оренду чи надавати в сублі­цензію;
+  4. видавати Програму або її частини за власну, прибирати чи змінювати
+     повідомлення про авторські права;
+  5. використовувати Програму в комерційних чи некомерційних проєктах.
+
+Те, що вихідний код технічно доступний для перегляду (наприклад, у браузері
+через інструменти розробника або в репозиторії, до якого Автор надав доступ),
+не є дозволом на його використання.
+
+Компоненти третіх сторін (зокрема Chart.js, three.js — ліцензія MIT; Firebase
+JavaScript SDK — ліцензія Apache-2.0) не входять до цієї ліцензії і діють на
+умовах власних ліцензій їхніх авторів.
+
+ПРОГРАМА НАДАЄТЬСЯ «ЯК Є», БЕЗ БУДЬ-ЯКИХ ГАРАНТІЙ, ЯВНИХ ЧИ НЕЯВНИХ. АВТОР НЕ
+НЕСЕ ВІДПОВІДАЛЬНОСТІ ЗА ЗБИТКИ, ПОВ'ЯЗАНІ З ВИКОРИСТАННЯМ ПРОГРАМИ.
+
+Щоб отримати дозвіл, зверніться до Автора.
+
+================================================================
+ENGLISH
+================================================================
+
+This source code and all accompanying files (images, styles, texts,
+configuration, 3D models and quotes authored by the owner), together the
+"Software", are the property of Roman Chelyk (the "Author") and are
+protected by copyright.
+
+No rights or licenses are granted. Without the Author's prior written
+permission you may not:
+
+  1. copy, reproduce, download or store the Software or any part of it;
+  2. modify, adapt, translate or create derivative works;
+  3. distribute, publish, host on your own servers or websites, transmit,
+     sell, rent or sublicense it;
+  4. present the Software or parts of it as your own, or remove or alter
+     copyright notices;
+  5. use the Software in any commercial or non-commercial project.
+
+The fact that the source code can technically be viewed (for example in a
+browser's developer tools, or in a repository to which the Author granted
+access) is not a permission to use it.
+
+Third-party components (including Chart.js and three.js, MIT license, and the
+Firebase JavaScript SDK, Apache-2.0 license) are not covered by this notice and
+remain under their respective licenses.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. THE AUTHOR SHALL NOT BE LIABLE FOR ANY CLAIM OR DAMAGES ARISING FROM
+THE USE OF THE SOFTWARE.
+
+To request permission, contact the Author.

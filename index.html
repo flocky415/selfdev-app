@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  SelfDev
+  © 2026 Roman Chelyk. Усі права захищено. / All rights reserved.
+  Копіювання, розповсюдження, зміна та використання коду без письмового дозволу автора заборонені.
+-->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
@@ -6,10 +11,22 @@
 
 <title>SelfDev</title>
 
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css">
+<meta name="description" content="SelfDev — застосунок для саморозвитку: звички, цілі, Pomodoro і компаньйон Джарвіз">
+<meta name="author" content="Roman Chelyk">
+<meta name="copyright" content="© 2026 Roman Chelyk. Усі права захищено.">
+<meta name="robots" content="noindex, nofollow">
 
-<meta name="theme-color" content="#4F46E5">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="design.css">
+
+<meta name="theme-color" content="#0b1020">
 
 </head>
 
@@ -59,15 +76,30 @@
 
 <span>🤖 Джарвіз</span>
 
-<button type="button" onclick="closeJarvisChat()">✕</button>
+<div class="jarvis-chat-header-actions">
+
+<button type="button" onclick="clearJarvisChat()" title="Почати нову розмову" aria-label="Почати нову розмову">🧹</button>
+
+<button type="button" onclick="closeJarvisChat()" aria-label="Закрити чат">✕</button>
+
+</div>
 
 </div>
 
 <div id="jarvisChatMessages" class="jarvis-chat-messages"></div>
 
+<div class="jarvis-quick-row">
+
+<button type="button" class="jarvis-chip" onclick="jarvisQuick('Що мені зробити зараз?')">🎯 Що робити?</button>
+<button type="button" class="jarvis-chip" onclick="jarvisQuick('Який мій прогрес?')">📊 Мій прогрес</button>
+<button type="button" class="jarvis-chip" onclick="jarvisQuick('Мотивуй мене')">💪 Мотивуй</button>
+<button type="button" class="jarvis-chip" onclick="jarvisQuick('Склади мені план на сьогодні')">🗓️ План на день</button>
+
+</div>
+
 <div class="jarvis-chat-input-row">
 
-<input id="jarvisChatInput" placeholder="Запитай щось..." onkeydown="if(event.key==='Enter') sendJarvisMessage()" onfocus="setTimeout(()=>this.scrollIntoView({block:'center', behavior:'smooth'}), 300)">
+<input id="jarvisChatInput" placeholder="Запитай щось..." maxlength="2000" autocomplete="off" onkeydown="if(event.key==='Enter') sendJarvisMessage()" onfocus="setTimeout(()=>this.scrollIntoView({block:'center', behavior:'smooth'}), 300)">
 
 <button type="button" onclick="sendJarvisMessage()">➤</button>
 
@@ -109,14 +141,15 @@
 
 </div>
 
-<div style="display:flex;align-items:center;gap:6px">
+<div style="display:flex;align-items:center;gap:8px">
 
-<button type="button" id="notifyBtn" onclick="openPage('notifications')">
-🔔
+<button type="button" id="notifyBtn" class="icon-btn" onclick="openPage('notifications')" aria-label="Сповіщення">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
 </button>
 
-<button type="button" id="themeBtn" onclick="toggleTheme()">
-🌙
+<button type="button" id="themeBtn" class="icon-btn" onclick="toggleTheme()" aria-label="Змінити тему">
+<svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+<svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
 </button>
 
 </div>
@@ -133,25 +166,23 @@
 <nav>
 
 <button type="button" class="tab active" data-page="home">
-🏠
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+<span>Головна</span>
 </button>
 
 <button type="button" class="tab" data-page="habits">
-✅
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+<span>Завдання</span>
 </button>
 
 <button type="button" class="tab" data-page="goals">
-🎯
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+<span>Цілі</span>
 </button>
 
-<!-- notes moved
-<button type="button" class="tab" data-page="notes">
-📖
-</button>-->
-
 <button type="button" id="moreBtn">
-<span class="more-icon">☰</span>
-<span class="more-label">Ще</span>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+<span>Ще</span>
 </button>
 
 </nav>
@@ -162,27 +193,58 @@
 
 <h2>🏠 Головна</h2>
 
-<div class="card">
+<div class="bento">
 
-<h3>📅 Сьогодні</h3>
+<div class="card quote-card b-full" aria-labelledby="quoteTitle">
+
+<span class="quote-mark" aria-hidden="true">“</span>
+
+<div class="quote-head">
+
+<h3 id="quoteTitle">✨ Думка дня</h3>
+
+<span id="quoteCategory"></span>
+
+</div>
+
+<blockquote id="quoteText" aria-live="polite"></blockquote>
+
+<div class="quote-actions">
+
+<button type="button" id="quoteLikeBtn" onclick="toggleQuoteFavorite()" aria-pressed="false">♡ Зберегти</button>
+
+<button type="button" onclick="shareQuote()">↗ Поділитися</button>
+
+<button type="button" onclick="showAnotherQuote()" aria-label="Показати іншу цитату">🔀 Ще одна</button>
+
+</div>
+
+</div>
+
+<div class="card bento-hero b-wide">
+
+<div class="day-ring" aria-hidden="true">
+<svg width="92" height="92" viewBox="0 0 92 92"><circle class="track" cx="46" cy="46" r="38"/><circle class="fill" id="dayRingFill" cx="46" cy="46" r="38" stroke-dasharray="238.76" stroke-dashoffset="238.76"/></svg>
+<span><span id="dayProgressNumber">0</span>%</span>
+</div>
+
+<div>
+
+<h3>Прогрес дня</h3>
+
+<p id="dayProgressText">Сьогодні</p>
 
 <p id="today"></p>
 
+<div class="progress"><div id="dayProgress"></div></div>
+
 </div>
-
-<div class="card quote-card">
-
-<h3>📖 Думка дня</h3>
-
-<p id="quoteText"></p>
-
-<div id="quoteCategory"></div>
 
 </div>
 
 <div class="card">
 
-<h3>🔥 Серія днів</h3>
+<h3>🔥 Серія</h3>
 
 <div class="home-streak-row">
 <div id="homeStreakDisplay" class="home-streak-number">0</div>
@@ -192,13 +254,51 @@
 
 <div class="card">
 
+<h3>⭐ Рівень</h3>
+
+<p id="nextLevelText">Залишилось 100 XP</p>
+
+<p id="achievementText">Почни виконувати завдання 🚀</p>
+
+</div>
+
+<div class="card daily-bonus-card b-wide">
+
+<h3>🎁 Щоденний бонус</h3>
+
+<p id="dailyBonusText">Виконай усі завдання дня, щоб отримати бонус</p>
+
+<button type="button" id="dailyBonusBtn" onclick="claimDailyBonus()" disabled>
+🎁 Забрати +50 XP
+</button>
+
+</div>
+
+<div class="card b-wide">
+
+<h3>📊 Цей тиждень</h3>
+
+<div class="week-stats">
+
+<div class="week-stat"><b id="weekAvgPercent">0%</b><span>середня успішність</span></div>
+
+<div class="week-stat"><b id="weekBestDay">—</b><span>найкращий день</span></div>
+
+<div class="week-stat" style="grid-column:1/3"><b id="weekDiff">+0%</b><span>порівняно з мин. тижнем</span></div>
+
+</div>
+
+</div>
+
+<div class="card b-wide">
+
 <h3>📅 Активність за 3 місяці</h3>
 
 <div class="heatmap" id="activityHeatmap"></div>
 
 <div class="heatmap-legend">
 менше
-<div style="background:#334155"></div>
+<div style="background:var(--surface-2)"></div>
 <div class="l1"></div>
 <div class="l2"></div>
 <div class="l3"></div>
@@ -207,7 +307,7 @@
 
 </div>
 
-<div class="card">
+<div class="card b-wide">
 
 <h3>📈 Прогрес</h3>
 
@@ -260,7 +360,19 @@ class="progressCircle"/>
 
 </div>
 
-<div class="card">
+<div class="card b-wide">
+
+<h3>🥇 Мої досягнення</h3>
+
+<div id="badgeGalleryPreview" class="badge-gallery-preview"></div>
+
+<ul id="achievementList" class="achievement-list">
+
+</ul>
+
+</div>
+
+<div class="card b-wide">
 
 <h3>🎨 Налаштування Джарвіза</h3>
 
@@ -278,87 +390,12 @@ class="progressCircle"/>
 
 <p style="opacity:.6;font-size:12px;margin-top:12px">Нові варіанти розблоковуються з рівнем</p>
 
-</div>
-
-<div class="card">
-
-<h3>🏆 Досягнення</h3>
-
-<p id="achievementText">
-
-Почни виконувати завдання 🚀
-
-</p>
+<label class="setting-row" for="jarvisHintsToggle">
+<span>💬 Підказки Джарвіза</span>
+<input type="checkbox" id="jarvisHintsToggle" checked>
+</label>
 
 </div>
-
-<div class="card">
-
-<h3>⭐ Наступний рівень</h3>
-
-<p id="nextLevelText">
-
-Залишилось 100 XP
-
-</p>
-
-</div>
-
-<div class="card">
-
-<h3>📊 Прогрес дня</h3>
-
-<div class="progress">
-
-<div id="dayProgress"></div>
-
-</div>
-
-<p id="dayProgressText">
-
-<span id="dayProgressNumber">0</span>% виконано
-
-</p>
-
-</div>
-
-<div class="card daily-bonus-card">
-
-<h3>🎁 Щоденний бонус</h3>
-
-<p id="dailyBonusText">Виконай усі завдання дня, щоб отримати бонус</p>
-
-<button type="button" id="dailyBonusBtn" onclick="claimDailyBonus()" disabled>
-🎁 Забрати +50 XP
-</button>
-
-</div>
-
-<div class="card">
-
-<h3>📊 Цей тиждень</h3>
-
-<div class="week-stats">
-
-<div class="week-stat"><b id="weekAvgPercent">0%</b><span>середня успішність</span></div>
-
-<div class="week-stat"><b id="weekBestDay">—</b><span>найкращий день</span></div>
-
-<div class="week-stat" style="grid-column:1/3"><b id="weekDiff">+0%</b><span>порівняно з мин. тижнем</span></div>
-
-</div>
-
-</div>
-
-<div class="card">
-
-<h3>🥇 Мої досягнення</h3>
-
-<div id="badgeGalleryPreview" class="badge-gallery-preview"></div>
-
-<ul id="achievementList" class="achievement-list">
-
-</ul>
 
 </div>
 
@@ -366,16 +403,25 @@ class="progressCircle"/>
 
 <section id="habits" class="page">
 
+<div class="page-head">
 <h2>Завдання</h2>
+<button type="button" class="page-add" onclick="uiAddFromSheet()">＋ Додати завдання</button>
+</div>
 
-<input id="habitInput" placeholder="Нове завдання">
+<div class="add-form" aria-hidden="true">
 
-<select id="habitCategory">
+<input id="habitInput" placeholder="Нове завдання" maxlength="200" tabindex="-1">
+
+<select id="habitCategory" tabindex="-1">
 <option value="health">💪 Здоров'я</option>
 <option value="career">💼 Кар'єра</option>
 <option value="learning">📚 Навчання</option>
 <option value="personal" selected>🌟 Особисте</option>
 </select>
+
+<button type="button" onclick="addHabit()" tabindex="-1">Додати</button>
+
+</div>
 
 <input
 id="habitSearch"
@@ -390,26 +436,35 @@ onkeyup="searchHabits()">
 <option value="active">⏳ Спочатку невиконані</option>
 </select>
 
-<button type="button" onclick="addHabit()">
-Додати
-</button>
+<div id="habitSphereFilter" class="sphere-filter" role="toolbar" aria-label="Фільтр за сферами"></div>
 
 <ul id="habitList"></ul>
+
+<p class="swipe-hint" id="habitSwipeHint">→ свайп праворуч — виконати · свайп ліворуч — видалити ←</p>
 
 </section>
 
 <section id="goals" class="page">
 
+<div class="page-head">
 <h2>Цілі</h2>
+<button type="button" class="page-add" onclick="uiAddFromSheet()">＋ Додати ціль</button>
+</div>
 
-<input id="goalInput" placeholder="Нова ціль">
+<div class="add-form" aria-hidden="true">
 
-<select id="goalCategory">
+<input id="goalInput" placeholder="Нова ціль" maxlength="200" tabindex="-1">
+
+<select id="goalCategory" tabindex="-1">
 <option value="health">💪 Здоров'я</option>
 <option value="career">💼 Кар'єра</option>
 <option value="learning">📚 Навчання</option>
 <option value="personal" selected>🌟 Особисте</option>
 </select>
+
+<button type="button" onclick="addGoal()" tabindex="-1">Додати</button>
+
+</div>
 
 <input
 id="goalSearch"
@@ -424,72 +479,103 @@ onkeyup="searchGoals()">
 <option value="active">⏳ Спочатку невиконані</option>
 </select>
 
-<button type="button" onclick="addGoal()">
-Додати
-</button>
+<div id="goalSphereFilter" class="sphere-filter" role="toolbar" aria-label="Фільтр за сферами"></div>
 
 <ul id="goalList"></ul>
+
+<p class="swipe-hint" id="goalSwipeHint">→ свайп праворуч — виконати · свайп ліворуч — видалити ←</p>
 
 </section>
 
 <section id="timer" class="page">
 
-<h2>🍅 Pomodoro</h2>
+<div class="page-head"><h2>Pomodoro</h2></div>
 
-<div class="card">
+<p class="page-sub">Кілька таймерів одночасно — кожен зі своєю назвою і часом</p>
 
-<p style="opacity:.8;font-size:14px;margin-bottom:12px">Можна запустити кілька таймерів одночасно — кожен зі своєю назвою і часом</p>
+<div class="card timer-create">
+
+<h3>Новий таймер</h3>
 
 <input id="pomodoroLabel" placeholder="Назва (наприклад: Робота)" maxlength="30">
 
-<label style="margin-top:10px;display:block">⏱ Тривалість</label>
-
-<div class="time-control">
-<button type="button" onclick="changePomodoro(-1)">−</button>
-
-<input type="number" id="pomodoroMinutes" min="1" max="180" value="25">
-
-<button type="button" onclick="changePomodoro(1)">+</button>
+<div class="preset-row" role="group" aria-label="Швидкий вибір тривалості">
+<button type="button" data-min="15" onclick="setPomodoroPreset(15)">15 хв</button>
+<button type="button" data-min="25" onclick="setPomodoroPreset(25)">25 хв</button>
+<button type="button" data-min="45" onclick="setPomodoroPreset(45)">45 хв</button>
+<button type="button" data-min="60" onclick="setPomodoroPreset(60)">60 хв</button>
 </div>
 
-<button type="button" onclick="addPomodoroTimer()">➕ Додати таймер</button>
+<div class="time-control">
+<button type="button" onclick="changePomodoro(-1)" aria-label="Менше на хвилину">−</button>
+<input type="number" id="pomodoroMinutes" min="1" max="180" value="25" aria-label="Тривалість у хвилинах">
+<span class="time-unit">хв</span>
+<button type="button" onclick="changePomodoro(1)" aria-label="Більше на хвилину">+</button>
+</div>
 
-<label style="display:flex;align-items:center;gap:10px;margin-top:16px;cursor:pointer">
-<input type="checkbox" id="pomodoroNotifyToggle" checked onchange="savePomodoroNotifyToggle(this.checked)" style="width:auto">
-🔔 Сповіщати про завершення
+<button type="button" class="btn-block" onclick="addPomodoroTimer()">＋ Додати таймер</button>
+
+<label class="setting-row" for="pomodoroNotifyToggle">
+<span>🔔 Сповіщати про завершення</span>
+<input type="checkbox" id="pomodoroNotifyToggle" checked onchange="savePomodoroNotifyToggle(this.checked)">
 </label>
 
 </div>
 
-<div id="pomodoroList"></div>
+<div id="pomodoroList" class="timer-grid"></div>
 
 </section>
 
 <section id="stats" class="page">
 
-<h2>📈 Статистика</h2>
+<div class="page-head"><h2>Статистика</h2></div>
 
-<div class="card">
+<p class="page-sub">Твій прогрес за весь час</p>
 
-<h3>✅ Виконані завдання</h3>
+<div class="bento stats-grid">
 
-<h1 id="habitCount">0</h1>
-
+<div class="card stat-tile" style="--c:#22c55e">
+<span class="stat-ic" aria-hidden="true">✅</span>
+<h3>Виконані завдання</h3>
+<div class="bento-val" id="habitCount">0</div>
 </div>
 
-<div class="card">
-
-<h3>🎯 Виконані цілі</h3>
-
-<h1 id="goalCount">0</h1>
-
+<div class="card stat-tile" style="--c:#3b82f6">
+<span class="stat-ic" aria-hidden="true">🎯</span>
+<h3>Виконані цілі</h3>
+<div class="bento-val" id="goalCount">0</div>
 </div>
 
-<div class="card">
+<div class="card stat-tile" style="--c:#f97316">
+<span class="stat-ic" aria-hidden="true">🔥</span>
+<h3>Серія днів</h3>
+<div class="bento-val" id="streakCount">0</div>
+</div>
 
-<h3>🔥 Серія днів</h3>
+<div class="card stat-tile" style="--c:#ef4444">
+<span class="stat-ic" aria-hidden="true">🍅</span>
+<h3>Pomodoro</h3>
+<div class="bento-val" id="statPomodoros">0</div>
+</div>
 
-<h1 id="streakCount">0 🔥</h1>
+<div class="card stat-tile" style="--c:#8b5cf6">
+<span class="stat-ic" aria-hidden="true">⭐</span>
+<h3>Рівень</h3>
+<div class="bento-val" id="statLevel">1</div>
+<small class="bento-meta" id="statXp">0/100 XP</small>
+</div>
+
+<div class="card stat-tile" style="--c:#38bdf8">
+<span class="stat-ic" aria-hidden="true">❄️</span>
+<h3>Заморозки</h3>
+<div class="bento-val" id="statFreezes">0</div>
+<small class="bento-meta">рятують серію</small>
+</div>
+
+<div class="card b-full">
+<h3>Останні 7 днів</h3>
+<div class="week-bars" id="statWeekBars" role="img" aria-label="Прогрес за останні 7 днів"></div>
+</div>
 
 </div>
 
@@ -497,43 +583,87 @@ onkeyup="searchGoals()">
 
 <section id="notes" class="page">
 
-<h2>Щоденник</h2>
+<div class="page-head"><h2>Щоденник</h2></div>
 
-<textarea id="noteInput" placeholder="Нова нотатка..."></textarea>
+<p class="page-sub">Думки, ідеї й підсумки дня</p>
 
-<button type="button" onclick="addNote()">
-Додати нотатку
+<div class="card note-compose">
+
+<textarea id="noteInput" placeholder="Що сьогодні вдалося? Що хочеш запам'ятати?" maxlength="5000" oninput="updateNoteCounter()"></textarea>
+
+<div class="compose-foot">
+<small id="noteCounter" class="mono">0 / 5000</small>
+<button type="button" onclick="addNote()">Додати запис</button>
+</div>
+
+</div>
+
+<ul id="notesList" class="notes-list"></ul>
+
+<h3 class="section-title">Дані</h3>
+
+<div class="card settings-card">
+
+<div class="settings-head">
+<span class="set-ic" style="--c:#38bdf8" aria-hidden="true">☁️</span>
+<div><b>Синхронізація</b><small>Однакові дані на телефоні та комп'ютері</small></div>
+</div>
+
+<p id="syncStatus" class="sync-status" aria-live="polite">Завантаження…</p>
+
+<div class="sync-actions">
+
+<button type="button" id="syncSignInBtn">
+Увійти через Google
 </button>
 
-<ul id="notesList"></ul>
-
-<hr>
-
-<h3>💾 Резервна копія</h3>
-
-<button type="button" onclick="exportData()">
-Експортувати
+<button type="button" id="syncNowBtn" style="display:none">
+Синхронізувати зараз
 </button>
+
+<button type="button" id="syncSignOutBtn" class="sync-secondary" style="display:none">
+Вийти
+</button>
+
+</div>
+
+</div>
+
+<div class="card settings-card">
+
+<div class="settings-head">
+<span class="set-ic" style="--c:#22c55e" aria-hidden="true">💾</span>
+<div><b>Резервна копія</b><small>Збережи файл із даними або віднови з нього</small></div>
+</div>
+
+<div class="sync-actions">
+
+<button type="button" class="btn-secondary" onclick="exportData()">⬇ Експортувати</button>
 
 <input
 type="file"
+accept="application/json,.json"
 id="importFile"
 style="display:none"
 onchange="importData(event)">
 
-<button type="button" onclick="document.getElementById('importFile').click()">
-Імпортувати
-</button>
+<button type="button" class="btn-secondary" onclick="document.getElementById('importFile').click()">⬆ Імпортувати</button>
+
+</div>
+
+</div>
 
 </section>
 
 <section id="achievements" class="page">
 
-<h2>🏆 Досягнення</h2>
+<div class="page-head"><h2>Досягнення</h2></div>
+
+<p class="page-sub">Сфери життя, щоденні виклики та продуктивність</p>
 
 <div class="card">
 
-<h3>🌳 Сфери життя</h3>
+<h3>Сфери життя</h3>
 
 <div id="lifeSpheresList"></div>
 
@@ -541,9 +671,9 @@ onchange="importData(event)">
 
 <div class="card">
 
-<h3>🎲 Щоденні виклики</h3>
+<h3>Щоденні виклики</h3>
 
-<p style="opacity:.8;font-size:14px;margin-bottom:10px">Оновлюються щодня опівночі — виконані вчора звільняють місце новим</p>
+<p class="card-note">Оновлюються щодня опівночі</p>
 
 <div id="dailyChallengesList"></div>
 
@@ -551,9 +681,9 @@ onchange="importData(event)">
 
 <div class="card">
 
-<h3>📈 Продуктивність</h3>
-
-<select id="chartPeriodSelect" onchange="setChartPeriod(this.value)">
+<div class="card-head">
+<h3>Продуктивність</h3>
+<select id="chartPeriodSelect" class="select-compact" onchange="setChartPeriod(this.value)" aria-label="Період графіка">
 <option value="1h">Щогодини</option>
 <option value="4h">Кожні 4 години</option>
 <option value="day">По днях</option>
@@ -562,6 +692,7 @@ onchange="importData(event)">
 <option value="month">По місяцях</option>
 <option value="year">По роках</option>
 </select>
+</div>
 
 <div class="chart-box">
 
@@ -575,36 +706,41 @@ onchange="importData(event)">
 
 <section id="notifications" class="page">
 
-<h2>🔔 Сповіщення</h2>
+<div class="page-head"><h2>Сповіщення</h2></div>
+
+<p class="page-sub">Нагадування, звук і вібрація</p>
 
 <div class="card">
 
+<div class="card-head">
 <h3>Щоденне нагадування</h3>
+<span id="notifyStatus" class="status-pill">Сповіщення вимкнено</span>
+</div>
 
-<p id="notifyStatus">Сповіщення вимкнено</p>
+<label class="setting-row" for="notifyTime">
+<span>⏰ Час нагадування</span>
+<input type="time" id="notifyTime" value="09:00" class="input-compact">
+</label>
 
-<label>⏰ Час нагадування</label>
-
-<input type="time" id="notifyTime" value="09:00">
-
-<label>🔊 Гучність звуку</label>
-
+<div class="setting-row setting-col">
+<label for="notifyVolume">🔊 Гучність звуку</label>
 <input type="range" id="notifyVolume" min="0" max="100" value="70" oninput="saveNotifyVolume(this.value)">
+</div>
 
-<button type="button" onclick="enableNotifications()">
-🔔 Увімкнути
-</button>
+<label class="setting-row" for="hapticsToggle">
+<span>📳 Вібрація при виконанні</span>
+<input type="checkbox" id="hapticsToggle" checked>
+</label>
 
-<button type="button" onclick="disableNotifications()">
-🔕 Вимкнути
-</button>
+<div class="btn-row">
+<button type="button" onclick="enableNotifications()">🔔 Увімкнути</button>
+<button type="button" class="btn-secondary" onclick="disableNotifications()">🔕 Вимкнути</button>
+</div>
 
-<button type="button" onclick="sendTestNotification()">
-🧪 Тестове сповіщення зараз
-</button>
+<button type="button" class="btn-secondary btn-block" onclick="sendTestNotification()">🧪 Тестове сповіщення</button>
 
-<p style="margin-top:15px;font-size:14px;opacity:.7">
-Нагадування перевіряється, поки застосунок відкритий (у вкладці чи фоні), і спрацює одразу, як тільки настане чи мине вказаний час — навіть якщо точну хвилину застосунок був закритий. Але якщо застосунок весь день не відкривали жодного разу — сповіщення не прийде: це обмеження браузерних PWA без сервера push.
+<p class="card-note" style="margin-top:14px">
+Нагадування спрацює, коли застосунок відкритий (у вкладці чи у фоні) — одразу, як настане вказаний час. Якщо за день застосунок жодного разу не відкривали, сповіщення не прийде: це обмеження браузерних застосунків без push-сервера.
 </p>
 
 </div>
@@ -613,13 +749,15 @@ onchange="importData(event)">
 
 <section id="friends" class="page">
 
-<h2>👥 Друзі</h2>
+<div class="page-head"><h2>Друзі</h2></div>
+
+<p class="page-sub">Змагайтеся та тримайте спільну серію</p>
 
 <div id="friendNotConfigured" class="card" style="display:none">
 
-<h3>⚙️ Firebase ще не підключено</h3>
+<h3>Firebase ще не підключено</h3>
 
-<p style="opacity:.8;font-size:14px">Заповни файл <b>firebase-config.js</b> своїми даними з Firebase Console, щоб змагання з друзями запрацювало.</p>
+<p class="card-note">Заповни файл <b>firebase-config.js</b> своїми даними з Firebase Console, щоб змагання з друзями запрацювало.</p>
 
 </div>
 
@@ -627,34 +765,47 @@ onchange="importData(event)">
 
 <h3>Створи свій профіль</h3>
 
-<p style="opacity:.8;font-size:14px;margin-bottom:10px">Вигадай ім'я — і отримаєш код, яким поділишся з другом</p>
+<p class="card-note">Вигадай ім'я — і отримаєш код, яким поділишся з другом</p>
 
-<input id="friendNameInput" placeholder="Твоє ім'я">
+<input id="friendNameInput" placeholder="Твоє ім'я" maxlength="30">
 
-<button type="button" onclick="createFriendProfile()">✨ Створити профіль</button>
+<button type="button" class="btn-block" onclick="createFriendProfile()">✨ Створити профіль</button>
 
 </div>
 
-<div id="friendHasProfile" class="card" style="display:none">
+<div id="friendHasProfile" style="display:none">
+
+<div class="card friend-hero">
 
 <h3>Твій код</h3>
 
-<div class="friend-code-box" onclick="copyFriendCode()">
+<button type="button" class="friend-code-box" onclick="copyFriendCode()" aria-label="Скопіювати код">
 
 <span id="myFriendCodeText">------</span>
 <small>натисни, щоб скопіювати</small>
 
+</button>
+
 </div>
 
-<p style="opacity:.8;font-size:14px;margin-top:15px">Додай код друга, щоб побачити його прогрес</p>
+<div class="card">
 
-<input id="friendCodeInput" placeholder="Код друга" style="text-transform:uppercase">
+<h3>Додати друга</h3>
 
-<button type="button" onclick="addFriend()">➕ Додати друга</button>
+<div class="inline-form">
+<input id="friendCodeInput" placeholder="Код друга" maxlength="10" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
+<button type="button" onclick="addFriend()">Додати</button>
+</div>
 
-<h3 style="margin-top:20px">🏆 Рейтинг</h3>
+</div>
+
+<div class="card">
+
+<h3>🏆 Рейтинг</h3>
 
 <div id="friendsList"></div>
+
+</div>
 
 </div>
 
@@ -662,49 +813,64 @@ onchange="importData(event)">
 
 </main>
 
-<div id="moreMenu" class="more-menu">
 
-    <div class="more-content">
+<button type="button" id="fab" class="fab" aria-label="Додати">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+</button>
 
-        <h3>Меню</h3>
+<div id="moreMenu" class="more-menu" onclick="if(event.target===this) closeMoreMenu()">
 
-        <button class="more-item" onclick="openPage('timer')">
-            🍅 Pomodoro
-        </button>
+    <div class="more-content" role="dialog" aria-modal="true" aria-labelledby="moreTitle">
 
-        <button class="more-item" onclick="openPage('notes')">
-            📝 Нотатки
-        </button>
+        <div class="sheet-grab" aria-hidden="true"></div>
 
-        <button class="more-item" onclick="openPage('achievements')">
-            🏆 Досягнення
-        </button>
+        <h3 id="moreTitle">Меню</h3>
 
-        <button class="more-item" onclick="openPage('notifications')">
-            🔔 Сповіщення
-        </button>
+        <div class="more-grid">
 
-        <button class="more-item" onclick="openPage('friends')">
-            👥 Друзі
-        </button>
+            <button type="button" class="more-item" style="--c:#ef4444" onclick="openPage('timer')">
+                <span class="more-ic" aria-hidden="true">🍅</span>Pomodoro
+            </button>
 
-        <button class="more-item" onclick="closeMoreMenu()">
-            ❌ Закрити
-        </button>
+            <button type="button" class="more-item" style="--c:#f59e0b" onclick="openPage('notes')">
+                <span class="more-ic" aria-hidden="true">📝</span>Щоденник
+            </button>
+
+            <button type="button" class="more-item" style="--c:#22c55e" onclick="openPage('stats')">
+                <span class="more-ic" aria-hidden="true">📈</span>Статистика
+            </button>
+
+            <button type="button" class="more-item" style="--c:#8b5cf6" onclick="openPage('achievements')">
+                <span class="more-ic" aria-hidden="true">🏆</span>Досягнення
+            </button>
+
+            <button type="button" class="more-item" style="--c:#38bdf8" onclick="openPage('notifications')">
+                <span class="more-ic" aria-hidden="true">🔔</span>Сповіщення
+            </button>
+
+            <button type="button" class="more-item" style="--c:#ec4899" onclick="openPage('friends')">
+                <span class="more-ic" aria-hidden="true">👥</span>Друзі
+            </button>
+
+        </div>
+
+        <button type="button" class="btn-secondary btn-block more-close" onclick="closeMoreMenu()">Закрити</button>
 
     </div>
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js" crossorigin="anonymous"></script>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
 
 <script src="quotes.js"></script>
+<script src="cloud-sync.js"></script>
+<script src="ui.js"></script>
 <script src="app.js"></script>
 <script src="firebase-config.js"></script>
 <script src="friends.js"></script>

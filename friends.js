@@ -1,19 +1,92 @@
+/*
+ * SelfDev — друзі та змагання (Firebase)
+ * © 2026 Roman Chelyk. Усі права захищено. / All rights reserved.
+ * Використання, копіювання та зміна без письмового дозволу автора заборонені.
+ */
+
 // ----------------
 // Друзі — змагання через Firebase
 // ----------------
 
-let myFriendCode = localStorage.getItem("myFriendCode") || "";
-let myFriendName = localStorage.getItem("myFriendName") || "";
-let friendCodes = JSON.parse(localStorage.getItem("friendCodes")) || [];
+const FRIEND_CODE_RE = /^[A-HJ-NP-Z2-9]{6,10}$/;
+const FRIEND_CODE_LENGTH = 8;
+const MAX_FRIENDS = 50;
+const KNOWN_AVATARS = ["🌱","🧑","🦸","👑"];
+
+function readFriendCodes(){
+
+    try{
+
+        const raw = JSON.parse(localStorage.getItem("friendCodes"));
+
+        if(!Array.isArray(raw)) return [];
+
+        return raw
+            .map(c => String(c).toUpperCase())
+            .filter(c => FRIEND_CODE_RE.test(c))
+            .slice(0, MAX_FRIENDS);
+
+    }catch(e){
+
+        return [];
+
+    }
+
+}
+
+let myFriendCode = (localStorage.getItem("myFriendCode") || "").toUpperCase();
+let myFriendName = (localStorage.getItem("myFriendName") || "").slice(0,30);
+let friendCodes = readFriendCodes();
+
+if(!FRIEND_CODE_RE.test(myFriendCode)) myFriendCode = "";
 
 let firebaseReady = false;
 let db = null;
+let myUid = "";
+
+let lastSyncedPayload = "";
+let syncTimer = null;
+let syncBlockedNotified = false;
+let friendsRenderToken = 0;
+
+function friendsToday(){
+
+    return typeof localISODate === "function"
+        ? localISODate()
+        : new Date().toLocaleDateString("sv-SE");
+
+}
+
+function friendsYesterday(){
+
+    return typeof isoDaysAgo === "function"
+        ? isoDaysAgo(1)
+        : new Date(Date.now() - 86400000).toLocaleDateString("sv-SE");
+
+}
+
+function isFirebaseConfigured(){
+
+    return typeof firebaseConfig !== "undefined"
+        && firebaseConfig
+        && firebaseConfig.apiKey
+        && firebaseConfig.apiKey !== "YOUR_API_KEY";
+
+}
 
 function initFirebase(){
 
-    if(typeof firebaseConfig === "undefined" || !firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY"){
+    if(!isFirebaseConfigured()){
 
         console.warn("Firebase не налаштований — заповніть firebase-config.js");
+
+        return;
+
+    }
+
+    if(typeof firebase === "undefined"){
+
+        console.warn("Firebase SDK не завантажився (немає інтернету?)");
 
         return;
 
@@ -25,14 +98,34 @@ function initFirebase(){
 
         db = firebase.firestore();
 
-        firebase.auth().signInAnonymously().then(()=>{
+        // Спершу чекаємо, чи вже є збережений вхід (зокрема через Google для синхронізації).
+        // Анонімно входимо лише якщо нікого немає — інакше signInAnonymously «викинув» би Google-акаунт.
+        firebase.auth().onAuthStateChanged(user=>{
+
+            if(!user){
+
+                firebaseReady = false;
+
+                firebase.auth().signInAnonymously().catch(e=> console.error("Firebase auth:", e));
+
+                return;
+
+            }
+
+            const uidChanged = myUid !== user.uid;
+
+            myUid = user.uid;
 
             firebaseReady = true;
+
+            if(uidChanged) lastSyncedPayload = "";
 
             renderFriendsPage();
             syncMyProfileToCloud();
 
-        }).catch(e=> console.error("Firebase auth:", e));
+            if(window.cloudSync) window.cloudSync.handleAuth(user);
+
+        });
 
     }catch(e){
 
@@ -42,15 +135,30 @@ function initFirebase(){
 
 }
 
+// Код друга — це «пароль» до його профілю, тому генеруємо його криптостійко
+// (Math.random передбачуваний) і довшим: 8 символів з 32 = 40 біт.
 function generateFriendCode(){
 
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+    const bytes = new Uint8Array(FRIEND_CODE_LENGTH);
+
+    if(window.crypto && window.crypto.getRandomValues){
+
+        window.crypto.getRandomValues(bytes);
+
+    }else{
+
+        for(let i=0;i<bytes.length;i++) bytes[i] = Math.floor(Math.random()*256);
+
+    }
+
     let code = "";
 
-    for(let i=0;i<6;i++){
+    for(let i=0;i<bytes.length;i++){
 
-        code += chars[Math.floor(Math.random()*chars.length)];
+        // 256 ділиться на 32 націло, тож зміщення розподілу немає
+        code += chars[bytes[i] % chars.length];
 
     }
 
@@ -58,17 +166,50 @@ function generateFriendCode(){
 
 }
 
-function createFriendProfile(){
+async function createFriendProfile(){
+
+    if(myFriendCode) return;
 
     const input = document.getElementById("friendNameInput");
 
-    if(!input || input.value.trim()==="") return;
+    if(!input) return;
 
-    myFriendName = input.value.trim();
-    myFriendCode = generateFriendCode();
+    const name = input.value.trim().slice(0,30);
+
+    if(name === "") return;
+
+    let code = generateFriendCode();
+
+    // Якщо хмара доступна — переконуємось, що такий код ще не зайнятий
+    if(firebaseReady && db){
+
+        try{
+
+            for(let attempt=0; attempt<5; attempt++){
+
+                const doc = await db.collection("users").doc(code).get();
+
+                if(!doc.exists) break;
+
+                code = generateFriendCode();
+
+            }
+
+        }catch(e){
+
+            console.error("Перевірка коду:", e);
+
+        }
+
+    }
+
+    myFriendName = name;
+    myFriendCode = code;
 
     localStorage.setItem("myFriendName", myFriendName);
     localStorage.setItem("myFriendCode", myFriendCode);
+
+    lastSyncedPayload = "";
 
     syncMyProfileToCloud();
 
@@ -80,78 +221,131 @@ function createFriendProfile(){
 
 function getMyTodayPercent(){
 
-const total = habits.length + goals.length;
-const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
+    const total = habits.length + goals.length;
+    const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
 
-return total===0 ? 0 : Math.round(done/total*100);
+    return total===0 ? 0 : Math.round(done/total*100);
 
 }
 
 async function getOrUpdateJointStreak(friendCode, friendTodayPercent){
 
-if(!db || !myFriendCode) return 0;
+    if(!db || !firebaseReady || !myFriendCode) return 0;
 
-const pairKey = [myFriendCode, friendCode].sort().join("_");
-const todayISO = new Date().toISOString().slice(0,10);
-const yesterdayISO = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    const pairKey = [myFriendCode, friendCode].sort().join("_");
+    const todayISO = friendsToday();
+    const yesterdayISO = friendsYesterday();
 
-const myTodayPercent = getMyTodayPercent();
-const bothActiveToday = myTodayPercent > 0 && friendTodayPercent > 0;
+    const myTodayPercent = getMyTodayPercent();
+    const bothActiveToday = myTodayPercent > 0 && friendTodayPercent > 0;
 
-try{
+    try{
 
-    const docRef = db.collection("pairs").doc(pairKey);
-    const doc = await docRef.get();
+        const docRef = db.collection("pairs").doc(pairKey);
+        const doc = await docRef.get();
 
-    let jointStreak = 0;
-    let lastJointDate = "";
+        let jointStreak = 0;
+        let lastJointDate = "";
 
-    if(doc.exists){
+        if(doc.exists){
 
-        const data = doc.data();
+            const data = doc.data();
 
-        jointStreak = data.jointStreak || 0;
-        lastJointDate = data.lastJointDate || "";
+            jointStreak = Math.max(0, Math.floor(Number(data.jointStreak) || 0));
+            lastJointDate = String(data.lastJointDate || "");
 
-    }
+        }
 
-    if(!bothActiveToday || lastJointDate === todayISO){
+        // Серія жива, лише якщо востаннє її продовжували сьогодні або вчора.
+        // Раніше тут повертався старий лічильник навіть після пропущених днів.
+        const alive = lastJointDate === todayISO || lastJointDate === yesterdayISO;
+
+        if(!bothActiveToday || lastJointDate === todayISO){
+
+            return alive ? jointStreak : 0;
+
+        }
+
+        jointStreak = (lastJointDate === yesterdayISO) ? jointStreak+1 : 1;
+
+        await docRef.set({ jointStreak, lastJointDate: todayISO });
 
         return jointStreak;
 
+    }catch(e){
+
+        console.error("Joint streak:", e);
+
+        return 0;
+
     }
 
-    jointStreak = (lastJointDate === yesterdayISO) ? jointStreak+1 : 1;
+}
 
-    await docRef.set({ jointStreak, lastJointDate: todayISO });
+function buildProfilePayload(){
 
-    return jointStreak;
+    const avatar = typeof getAvatarForLevel === "function" ? getAvatarForLevel(level) : "🌱";
 
-}catch(e){
-
-    console.error("Joint streak:", e);
-
-    return 0;
+    return {
+        name: myFriendName.slice(0,30),
+        level: Math.max(1, Math.floor(Number(level) || 1)),
+        streak: Math.max(0, Math.floor(Number(streak) || 0)),
+        xp: Math.max(0, Math.floor(Number(xp) || 0)),
+        todayPercent: getMyTodayPercent(),
+        todayDate: friendsToday(),
+        avatar: KNOWN_AVATARS.includes(avatar) ? avatar : "🌱",
+        ownerUid: myUid
+    };
 
 }
 
-}
-
+// Профіль записується не частіше за раз на кілька секунд і лише якщо щось змінилось:
+// updateStats() викликається при кожній дії, і раніше кожна з них була записом у Firestore.
 function syncMyProfileToCloud(){
 
-    if(!firebaseReady || !db || !myFriendCode) return;
+    if(!firebaseReady || !db || !myFriendCode || !myUid) return;
 
-    const todayPercent = getMyTodayPercent();
+    if(syncTimer) return;
 
-    db.collection("users").doc(myFriendCode).set({
-        name: myFriendName,
-        level: level,
-        streak: streak,
-        xp: xp,
-        todayPercent: todayPercent,
-        avatar: getAvatarForLevel(level),
-        updatedAt: Date.now()
-    }).catch(e=> console.error("Firestore sync:", e));
+    syncTimer = setTimeout(()=>{
+
+        syncTimer = null;
+
+        pushProfileNow();
+
+    }, 3000);
+
+}
+
+function pushProfileNow(){
+
+    if(!firebaseReady || !db || !myFriendCode || !myUid) return;
+
+    const payload = buildProfilePayload();
+
+    const serialized = JSON.stringify(payload);
+
+    if(serialized === lastSyncedPayload) return;
+
+    db.collection("users").doc(myFriendCode).set(
+        Object.assign({}, payload, { updatedAt: Date.now() })
+    ).then(()=>{
+
+        lastSyncedPayload = serialized;
+
+    }).catch(e=>{
+
+        console.error("Firestore sync:", e);
+
+        if(e && e.code === "permission-denied" && !syncBlockedNotified){
+
+            syncBlockedNotified = true;
+
+            showToast("⚠️ Профіль у хмарі не оновився — можливо, цей код створено старою версією. Створи профіль заново.");
+
+        }
+
+    });
 
 }
 
@@ -159,15 +353,21 @@ function copyFriendCode(){
 
     if(!myFriendCode) return;
 
+    const fallback = ()=> showToast("Твій код: "+myFriendCode);
+
+    if(!navigator.clipboard || !navigator.clipboard.writeText){
+
+        fallback();
+
+        return;
+
+    }
+
     navigator.clipboard.writeText(myFriendCode).then(()=>{
 
         showToast("📋 Код скопійовано: "+myFriendCode);
 
-    }).catch(()=>{
-
-        showToast("Твій код: "+myFriendCode);
-
-    });
+    }).catch(fallback);
 
 }
 
@@ -178,6 +378,14 @@ function addFriend(){
     if(!input || input.value.trim()==="") return;
 
     const code = input.value.trim().toUpperCase();
+
+    if(!FRIEND_CODE_RE.test(code)){
+
+        showToast("Код має складатися з 6–10 великих літер і цифр");
+
+        return;
+
+    }
 
     if(code === myFriendCode){
 
@@ -190,6 +398,14 @@ function addFriend(){
     if(friendCodes.includes(code)){
 
         showToast("Цей друг вже доданий");
+
+        return;
+
+    }
+
+    if(friendCodes.length >= MAX_FRIENDS){
+
+        showToast("Забагато друзів у списку (максимум "+MAX_FRIENDS+")");
 
         return;
 
@@ -215,15 +431,55 @@ function removeFriend(code){
 
 }
 
+function friendsMessage(list, text){
+
+    list.textContent = "";
+
+    const p = document.createElement("p");
+
+    p.style.cssText = "opacity:.6;text-align:center;padding:10px";
+    p.textContent = text;
+
+    list.appendChild(p);
+
+}
+
+function cleanFriend(code, data){
+
+    const num = (v, min, max)=>{
+
+        const n = Math.floor(Number(v));
+
+        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
+
+    };
+
+    const avatar = String(data.avatar || "");
+
+    return {
+        code,
+        name: String(data.name || "Без імені").slice(0,30),
+        level: num(data.level, 1, 10000),
+        streak: num(data.streak, 0, 100000),
+        xp: num(data.xp, 0, 1000000),
+        // Відсоток друга враховуємо лише якщо він оновлений сьогодні, інакше це вчорашнє число
+        todayPercent: data.todayDate === friendsToday() ? num(data.todayPercent, 0, 100) : 0,
+        avatar: KNOWN_AVATARS.includes(avatar) ? avatar : "🌱"
+    };
+
+}
+
 async function renderFriendsList(){
 
     const list = document.getElementById("friendsList");
 
     if(!list) return;
 
+    const token = ++friendsRenderToken;
+
     if(!firebaseReady || !db){
 
-        list.innerHTML = '<p style="opacity:.6;text-align:center;padding:10px">Firebase ще не підключено. Заповни firebase-config.js</p>';
+        friendsMessage(list, "Firebase ще не підключено. Заповни firebase-config.js");
 
         return;
 
@@ -231,43 +487,42 @@ async function renderFriendsList(){
 
     if(friendCodes.length === 0){
 
-        list.innerHTML = '<p style="opacity:.6;text-align:center;padding:10px">Додай першого друга за кодом вище</p>';
+        friendsMessage(list, "Додай першого друга за кодом вище");
 
         return;
 
     }
 
-    list.innerHTML = '<p style="opacity:.6;text-align:center;padding:10px">Завантаження...</p>';
+    friendsMessage(list, "Завантаження...");
 
-    const results = [];
-
-    for(const code of friendCodes){
+    // Усі профілі читаємо паралельно, а не по одному
+    const fetched = await Promise.all(friendCodes.map(async code=>{
 
         try{
 
             const doc = await db.collection("users").doc(code).get();
 
-            if(doc.exists){
-
-                results.push({ code, ...doc.data() });
-
-            }
+            return doc.exists ? cleanFriend(code, doc.data() || {}) : null;
 
         }catch(e){
 
             console.error("Fetch friend:", e);
 
+            return null;
+
         }
 
-    }
+    }));
+
+    if(token !== friendsRenderToken) return;
+
+    const results = fetched.filter(Boolean);
 
     results.sort((a,b)=> (b.xp + b.level*100) - (a.xp + a.level*100));
 
-    list.innerHTML = "";
-
     if(results.length === 0){
 
-        list.innerHTML = '<p style="opacity:.6;text-align:center;padding:10px">Жодного профілю не знайдено — перевір коди</p>';
+        friendsMessage(list, "Жодного профілю не знайдено — перевір коди");
 
         return;
 
@@ -275,42 +530,81 @@ async function renderFriendsList(){
 
     const myTodayPercent = getMyTodayPercent();
 
-    for(const f of results){
+    await Promise.all(results.map(async f=>{
 
         f.jointStreak = await getOrUpdateJointStreak(f.code, f.todayPercent);
 
-    }
+    }));
+
+    if(token !== friendsRenderToken) return;
+
+    list.textContent = "";
 
     results.forEach((f, i)=>{
 
-        const div = document.createElement("div");
+        const card = document.createElement("div");
 
-        div.className = "friend-card";
+        card.className = "friend-card";
 
-        const bothActiveToday = myTodayPercent > 0 && f.todayPercent > 0;
+        const rank = document.createElement("div");
 
-        let sharedFlame = "";
+        rank.className = "friend-rank";
+        rank.textContent = String(i+1);
+
+        const avatar = document.createElement("div");
+
+        avatar.className = "friend-avatar";
+        avatar.textContent = f.avatar;
+
+        const info = document.createElement("div");
+
+        info.className = "friend-info";
+
+        const nameEl = document.createElement("b");
+
+        nameEl.textContent = f.name;
+
+        const details = document.createElement("small");
+
+        details.textContent = "Рівень "+f.level+" · "+f.streak+" 🔥 · сьогодні "+f.todayPercent+"%";
+
+        info.appendChild(nameEl);
+        info.appendChild(details);
+
+        card.appendChild(rank);
+        card.appendChild(avatar);
+        card.appendChild(info);
 
         if(f.jointStreak > 0){
 
-            sharedFlame =
-                '<div class="shared-flame'+(bothActiveToday ? "" : " dim")+'" title="Спільний вогник з '+f.name+'">'+
-                '🔥🤝<small>'+f.jointStreak+'</small>'+
-                '</div>';
+            const bothActiveToday = myTodayPercent > 0 && f.todayPercent > 0;
+
+            const flame = document.createElement("div");
+
+            flame.className = "shared-flame"+(bothActiveToday ? "" : " dim");
+            flame.title = "Спільний вогник з "+f.name;
+            flame.appendChild(document.createTextNode("🔥🤝"));
+
+            const count = document.createElement("small");
+
+            count.textContent = String(f.jointStreak);
+
+            flame.appendChild(count);
+
+            card.appendChild(flame);
 
         }
 
-        div.innerHTML =
-            '<div class="friend-rank">'+(i+1)+'</div>'+
-            '<div class="friend-avatar">'+(f.avatar || "🌱")+'</div>'+
-            '<div class="friend-info">'+
-            '<b>'+f.name+'</b>'+
-            '<small>Рівень '+f.level+' · '+f.streak+' 🔥 · сьогодні '+f.todayPercent+'%</small>'+
-            '</div>'+
-            sharedFlame+
-            '<button onclick="removeFriend(\''+f.code+'\')">🗑</button>';
+        const removeBtn = document.createElement("button");
 
-        list.appendChild(div);
+        removeBtn.type = "button";
+        removeBtn.textContent = "🗑";
+        removeBtn.setAttribute("aria-label", "Видалити друга "+f.name);
+        removeBtn.addEventListener("click", ()=> removeFriend(f.code));
+
+        card.appendChild(removeBtn);
+
+        list.appendChild(card);
 
     });
 
@@ -323,7 +617,7 @@ function renderFriendsPage(){
     const myCodeText = document.getElementById("myFriendCodeText");
     const notConfigured = document.getElementById("friendNotConfigured");
 
-    if(typeof firebaseConfig === "undefined" || !firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY"){
+    if(!isFirebaseConfigured()){
 
         if(notConfigured) notConfigured.style.display = "block";
         if(noProfile) noProfile.style.display = "none";

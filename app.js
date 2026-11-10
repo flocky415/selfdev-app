@@ -1,3 +1,198 @@
+/*
+ * SelfDev
+ * © 2026 Roman Chelyk. Усі права захищено. / All rights reserved.
+ *
+ * Цей вихідний код є власністю автора. Копіювання, розповсюдження, зміна,
+ * публікація та будь-яке інше використання без письмового дозволу автора
+ * заборонені. Докладніше — у файлі LICENSE.
+ */
+
+// ----------------
+// Службові функції: безпечне читання сховища, екранування, локальні дати
+// ----------------
+
+const TASK_CATEGORIES = ["health","career","learning","personal"];
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+let deletePending = false;
+
+function safeJSON(key, fallback){
+
+    try{
+
+        const raw = localStorage.getItem(key);
+
+        if(raw === null) return fallback;
+
+        const value = JSON.parse(raw);
+
+        return (value === null || value === undefined) ? fallback : value;
+
+    }catch(e){
+
+        console.warn("Пошкоджені дані в localStorage, ключ:", key, e);
+
+        return fallback;
+
+    }
+
+}
+
+function safeArray(key){
+
+    const value = safeJSON(key, []);
+
+    return Array.isArray(value) ? value : [];
+
+}
+
+function safeNumber(key, fallback){
+
+    const raw = localStorage.getItem(key);
+
+    // Number(null) і Number("") дають 0, а не fallback
+    if(raw === null || raw.trim() === "") return fallback;
+
+    const n = Number(raw);
+
+    return Number.isFinite(n) ? n : fallback;
+
+}
+
+function clampInt(value, min, max, fallback){
+
+    const n = Math.floor(Number(value));
+
+    if(!Number.isFinite(n)) return fallback;
+
+    return Math.min(max, Math.max(min, n));
+
+}
+
+// Екранування тексту перед вставкою в innerHTML — назви завдань, нотатки
+// та назви таймерів вводить користувач (або вони приходять з імпорту).
+function escapeHtml(value){
+
+    return String(value === null || value === undefined ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+}
+
+function pad2(n){
+
+    return String(n).padStart(2, "0");
+
+}
+
+// Локальна дата у форматі РРРР-ММ-ДД. toISOString() дає UTC-дату, через що
+// «день» перемикався не опівночі за місцевим часом (наприклад, о 01:00 чи 03:00).
+function localISODate(d){
+
+    d = d || new Date();
+
+    return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+
+}
+
+// Дата n днів тому — через setDate, тож перехід на літній/зимовий час не збиває день.
+function isoDaysAgo(n){
+
+    const d = new Date();
+
+    d.setDate(d.getDate() - n);
+
+    return localISODate(d);
+
+}
+
+function isoToUTCms(iso){
+
+    const p = iso.split("-").map(Number);
+
+    return Date.UTC(p[0], p[1]-1, p[2]);
+
+}
+
+// Кількість календарних днів між двома датами РРРР-ММ-ДД (без впливу часових поясів/DST).
+function daysBetweenISO(a, b){
+
+    return Math.round((isoToUTCms(b) - isoToUTCms(a)) / 86400000);
+
+}
+
+function normalizeTask(t){
+
+    if(!t || typeof t !== "object") return null;
+
+    const name = String(t.name === null || t.name === undefined ? "" : t.name).trim().slice(0,200);
+
+    if(name === "") return null;
+
+    const created = String(t.created || new Date().toLocaleString()).slice(0,60);
+
+    return {
+        name: name,
+        done: t.done === true,
+        pinned: t.pinned === true,
+        category: TASK_CATEGORIES.includes(t.category) ? t.category : "personal",
+        created: created,
+        updated: String(t.updated || created).slice(0,60),
+        xpDay: ISO_DATE_RE.test(String(t.xpDay)) ? String(t.xpDay) : "",
+        xpAwarded: t.xpAwarded === true
+    };
+
+}
+
+function normalizeNote(n){
+
+    if(typeof n === "string") n = { text: n };
+
+    if(!n || typeof n !== "object") return null;
+
+    const text = String(n.text === null || n.text === undefined ? "" : n.text).slice(0,5000);
+
+    if(text.trim() === "") return null;
+
+    const created = String(n.created || new Date().toLocaleString()).slice(0,60);
+
+    return {
+        text: text,
+        created: created,
+        updated: String(n.updated || created).slice(0,60)
+    };
+
+}
+
+function normalizeHistory(arr){
+
+    if(!Array.isArray(arr)) return [];
+
+    return arr.slice(-800)
+        .filter(h => h && ISO_DATE_RE.test(String(h.date)) && Number.isFinite(Number(h.percent)))
+        .map(h => ({
+            date: String(h.date),
+            percent: Math.min(100, Math.max(0, Math.round(Number(h.percent))))
+        }));
+
+}
+
+function normalizeActivityLog(arr){
+
+    if(!Array.isArray(arr)) return [];
+
+    const cutoff = Date.now() - 730*86400000;
+    const limit = Date.now() + 86400000;
+
+    return arr.slice(-20000)
+        .map(Number)
+        .filter(ts => Number.isFinite(ts) && ts > cutoff && ts <= limit);
+
+}
+
 // ----------------
 // SelfDev v1
 // ----------------
@@ -8,11 +203,11 @@ let lastStreakDate = localStorage.getItem("lastStreakDate") || "";
 let lastOpen = localStorage.getItem("lastOpen") || "";
 
 
-let habits = JSON.parse(localStorage.getItem("habits")) || [];
-let goals = JSON.parse(localStorage.getItem("goals")) || [];
-let history = JSON.parse(localStorage.getItem("history")) || [];
-let notes = JSON.parse(localStorage.getItem("notes")) || [];
-let activityLog = JSON.parse(localStorage.getItem("activityLog")) || [];
+let habits = safeArray("habits");
+let goals = safeArray("goals");
+let history = safeArray("history");
+let notes = safeArray("notes");
+let activityLog = safeArray("activityLog");
 
 // Накопичувальна кількість виконань за весь час — рахує кожне виконання,
 // в тому числі повторне (наступного дня після скидання), а не лише
@@ -36,30 +231,51 @@ if(legacyNote && legacyNote.trim() !== "" && notes.length === 0){
 
 }
 
-// Оновлення старих даних
-goals.forEach(goal => {
-    if (goal.pinned === undefined) goal.pinned = false;
-    if (!goal.created) goal.created = new Date().toLocaleString();
-    if (!goal.updated) goal.updated = goal.created;
+// Оновлення старих даних, нормалізація і захист від пошкоджених/підкинутих даних
+habits = habits.map(normalizeTask).filter(Boolean);
+goals = goals.map(normalizeTask).filter(Boolean);
+notes = notes.map(normalizeNote).filter(Boolean);
+history = normalizeHistory(history);
+activityLog = normalizeActivityLog(activityLog);
+
+// Прапорці «XP вже нараховано»: завдання, виконане до оновлення, вдруге XP не дасть
+habits.forEach(habit => {
+    if (habit.done && !habit.xpDay) habit.xpDay = ISO_DATE_RE.test(lastOpen) ? lastOpen : localISODate();
 });
 
-habits.forEach(habit => {
-    if (habit.pinned === undefined) habit.pinned = false;
-    if (!habit.created) habit.created = new Date().toLocaleString();
-    if (!habit.updated) habit.updated = habit.created;
+goals.forEach(goal => {
+    if (goal.done) goal.xpAwarded = true;
 });
 
 localStorage.setItem("goals", JSON.stringify(goals));
 localStorage.setItem("habits", JSON.stringify(habits));
+localStorage.setItem("notes", JSON.stringify(notes));
 
 let habitSortMode = localStorage.getItem("habitSortMode") || "pinned";
 let goalSortMode = localStorage.getItem("goalSortMode") || "pinned";
 
-let xp = Number(localStorage.getItem("xp")) || 0;
-let level = Number(localStorage.getItem("level")) || 1;
+// Межі потрібні, щоб зіпсоване значення в сховищі (1e15 тощо) не давало мільярди «рівнів»
+const MAX_LEVEL = 10000;
+let xp = Math.min(1000000, Math.max(0, Math.floor(safeNumber("xp", 0))));
+let level = Math.min(MAX_LEVEL, Math.max(1, Math.floor(safeNumber("level", 1))));
 
-let unlockedAchievements = JSON.parse(localStorage.getItem("unlockedAchievements")) || [];
-let claimedAchievements = JSON.parse(localStorage.getItem("claimedAchievements")) || [];
+let unlockedAchievements = safeArray("unlockedAchievements");
+let claimedAchievements = safeArray("claimedAchievements");
+
+// Лічильники дня оголошені тут, до achievementDefs і першого виклику updateLevel():
+// раніше вони були нижче, і перевірка досягнень «Pomodoro» падала з помилкою
+// «Cannot access before initialization».
+let dailyStatsDate = localStorage.getItem("dailyStatsDate") || "";
+let habitsCompletedToday = Number(localStorage.getItem("habitsCompletedToday")) || 0;
+let goalsCompletedToday = Number(localStorage.getItem("goalsCompletedToday")) || 0;
+let pomodorosCompletedToday = Number(localStorage.getItem("pomodorosCompletedToday")) || 0;
+let totalPomodoroCompletions = Number(localStorage.getItem("totalPomodoroCompletions")) || 0;
+
+// "Липкий" пік денного прогресу і разова готовність бонусу — щоб видалення
+// вже виконаного завдання не відміняло зарахований прогрес дня
+let dayProgressPeakPercent = Number(localStorage.getItem("dayProgressPeakPercent")) || 0;
+let dailyBonusReady = localStorage.getItem("dailyBonusReady") === "true";
+
 
 const achievementDefs = [
     { name:"Перше виконане завдання", icon:"🎯", target:1, reward:20, progress: ()=> Math.min(totalHabitCompletions,1), check: ()=> totalHabitCompletions>=1 },
@@ -121,6 +337,8 @@ tabs.forEach(tab => {
             page.classList.add("active");
         }
 
+        if (typeof jarvisReact === "function") jarvisReact("page");
+
     };
 
 });
@@ -139,16 +357,24 @@ localStorage.setItem("activityLog", JSON.stringify(activityLog));
 
 function save(){
 
-localStorage.setItem("habits",JSON.stringify(habits));
-localStorage.setItem("goals",JSON.stringify(goals));
-localStorage.setItem("history", JSON.stringify(history));
-localStorage.setItem("notes", JSON.stringify(notes));
+try{
 
-localStorage.setItem("xp",xp);
-localStorage.setItem("level",level);
+    localStorage.setItem("habits",JSON.stringify(habits));
+    localStorage.setItem("goals",JSON.stringify(goals));
+    localStorage.setItem("history", JSON.stringify(history));
+    localStorage.setItem("notes", JSON.stringify(notes));
 
-localStorage.setItem("streak",streak);
-localStorage.setItem("lastOpen",lastOpen);
+    localStorage.setItem("xp",xp);
+    localStorage.setItem("level",level);
+
+    localStorage.setItem("streak",streak);
+    localStorage.setItem("lastOpen",lastOpen);
+
+}catch(e){
+
+    console.error("Не вдалося зберегти дані (сховище переповнене або заблоковане):", e);
+
+}
 
 }
 
@@ -190,9 +416,15 @@ function animateNumber(el, to, suffix){
 
 }
 
-function playCheckAnimation(li){
+function playCheckAnimation(li, xpAmount){
 
     if(!li) return;
+
+    if(typeof haptic === "function") haptic(18);
+    if(typeof uiXpFloat === "function") uiXpFloat(li, xpAmount);
+
+    // Джарвіз радіє разом з тобою
+    if(typeof jarvisReact === "function") jarvisReact(xpAmount >= 25 ? "goal" : "done");
 
     const mark = document.createElement("span");
 
@@ -206,6 +438,25 @@ function playCheckAnimation(li){
 }
 
 function showLevelUpCelebration(newLevel){
+
+    if(typeof jarvisReact === "function") jarvisReact("levelup");
+
+    // Нова повноекранна сцена з ui.js; стара плашка — запасний варіант
+    if(typeof showLevelScene === "function"){
+
+        try{
+
+            showLevelScene(newLevel);
+
+            return;
+
+        }catch(e){
+
+            console.error("showLevelScene:", e);
+
+        }
+
+    }
 
     const overlay = document.getElementById("levelUpOverlay");
     const numberEl = document.getElementById("levelUpNumber");
@@ -230,12 +481,19 @@ function updateLevel(){
 
 let leveledUp=false;
 
-while(xp>=100){
+if(!Number.isFinite(xp) || xp < 0) xp = 0;
+if(!Number.isFinite(level) || level < 1) level = 1;
+if(level > MAX_LEVEL) level = MAX_LEVEL;
 
-xp-=100;
-level++;
-leveledUp=true;
-showToast("🎊 Новий рівень: "+level);
+if(xp >= 100){
+
+    const gained = Math.floor(xp/100);
+
+    xp = xp % 100;
+    level = Math.min(MAX_LEVEL, level + gained);
+    leveledUp = true;
+
+    showToast("🎊 Новий рівень: "+level);
 
 }
 
@@ -355,21 +613,9 @@ try{
 // за датою, тож не перетасовується при кожному відкритті того самого дня).
 // ----------------
 
-let dailyStatsDate = localStorage.getItem("dailyStatsDate") || "";
-let habitsCompletedToday = Number(localStorage.getItem("habitsCompletedToday")) || 0;
-let goalsCompletedToday = Number(localStorage.getItem("goalsCompletedToday")) || 0;
-let pomodorosCompletedToday = Number(localStorage.getItem("pomodorosCompletedToday")) || 0;
-let totalPomodoroCompletions = Number(localStorage.getItem("totalPomodoroCompletions")) || 0;
-
-// "Липкий" пік денного прогресу і разова готовність бонусу — щоб видалення
-// вже виконаного завдання не відміняло зарахований прогрес дня (так само,
-// як ХП ніколи не зменшується заднім числом)
-let dayProgressPeakPercent = Number(localStorage.getItem("dayProgressPeakPercent")) || 0;
-let dailyBonusReady = localStorage.getItem("dailyBonusReady") === "true";
-
 function ensureDailyStatsFresh(){
 
-    const today = new Date().toISOString().slice(0,10);
+    const today = localISODate();
 
     if(dailyStatsDate === today) return;
 
@@ -400,12 +646,12 @@ const dailyChallengePool = [
 ];
 
 let dailyChallengesDate = localStorage.getItem("dailyChallengesDate") || "";
-let dailyChallengesIds = JSON.parse(localStorage.getItem("dailyChallengesIds") || "[]");
-let dailyChallengesClaimed = JSON.parse(localStorage.getItem("dailyChallengesClaimed") || "[]");
+let dailyChallengesIds = safeArray("dailyChallengesIds").filter(id => typeof id === "string");
+let dailyChallengesClaimed = safeArray("dailyChallengesClaimed").filter(id => typeof id === "string");
 
 function pickDailyChallenges(){
 
-    const today = new Date().toISOString().slice(0,10);
+    const today = localISODate();
 
     let seed = 0;
 
@@ -430,7 +676,7 @@ function pickDailyChallenges(){
 
 function ensureDailyChallengesFresh(){
 
-    const today = new Date().toISOString().slice(0,10);
+    const today = localISODate();
 
     if(dailyChallengesDate === today) return;
 
@@ -517,7 +763,10 @@ function claimDailyChallenge(id){
 // pomodoroTimers — стан кожного таймера (зберігається в localStorage).
 // ----------------
 
-let pomodoroTimers = JSON.parse(localStorage.getItem("pomodoroTimers")) || [];
+// Довжина кола таймера (r = 52) для SVG-кільця
+const POMO_RING = 2 * Math.PI * 52;
+
+let pomodoroTimers = safeArray("pomodoroTimers").map(normalizePomodoroTimer).filter(Boolean);
 const pomodoroRuntime = {};
 
 function savePomodoroTimers(){
@@ -541,20 +790,58 @@ function formatPomodoroTime(seconds){
 
 }
 
+function normalizePomodoroTimer(t){
+
+    if(!t || typeof t !== "object") return null;
+
+    const duration = clampInt(t.duration, 60, 180*60, 25*60);
+    const running = t.running === true && Number(t.endAt) > 0;
+    const remaining = clampInt(t.remaining, 0, duration, duration);
+
+    // id потрапляє в атрибути onclick, тому приймаємо лише "pt" + цифри
+    const id = /^pt\d+$/.test(String(t.id))
+        ? String(t.id)
+        : "pt"+Date.now()+Math.floor(Math.random()*1000000);
+
+    return {
+        id: id,
+        label: String(t.label || "Pomodoro").slice(0,60),
+        duration: duration,
+        remaining: remaining,
+        running: running,
+        endAt: running ? Number(t.endAt) : null
+    };
+
+}
+
+// XP за Pomodoro пропорційний тривалості (25 хв = 20 XP, не більше 20), сесії
+// коротші за 5 хв XP не дають, і не більше 12 винагороджених сесій на день —
+// інакше таймер на 1 хвилину можна було крутити заради XP.
+const POMODORO_MIN_REWARD_SECONDS = 5*60;
+const POMODORO_MAX_REWARDED_PER_DAY = 12;
+
+function pomodoroReward(durationSeconds){
+
+    if(durationSeconds < POMODORO_MIN_REWARD_SECONDS) return 0;
+
+    return Math.min(20, Math.max(1, Math.round(durationSeconds/60/25*20)));
+
+}
+
 function addPomodoroTimer(){
 
     const minutesInput = document.getElementById("pomodoroMinutes");
     const labelInput = document.getElementById("pomodoroLabel");
 
-    let minutes = Number(minutesInput ? minutesInput.value : 25);
+    let minutes = Math.floor(Number(minutesInput ? minutesInput.value : 25));
 
     if(!minutes || minutes<1) minutes = 1;
     if(minutes>180) minutes = 180;
 
-    const label = (labelInput && labelInput.value.trim()) || "Pomodoro";
+    const label = ((labelInput && labelInput.value.trim()) || "Pomodoro").slice(0,60);
 
     const t = {
-        id: "pt"+Date.now()+Math.floor(Math.random()*1000),
+        id: "pt"+Date.now()+Math.floor(Math.random()*1000000),
         label: label,
         duration: minutes*60,
         remaining: minutes*60,
@@ -612,23 +899,40 @@ function runPomodoroInterval(t){
             current.endAt = null;
             current.remaining = current.duration;
 
-            xp += 20;
-            updateLevel();
-
             ensureDailyStatsFresh();
-            pomodorosCompletedToday++;
-            localStorage.setItem("pomodorosCompletedToday", pomodorosCompletedToday);
 
-            totalPomodoroCompletions++;
-            localStorage.setItem("totalPomodoroCompletions", totalPomodoroCompletions);
+            let reward = pomodoroReward(current.duration);
 
-            showToast("🎉 "+(current.label||"Pomodoro")+" завершено! +20 XP");
+            if(reward > 0 && pomodorosCompletedToday >= POMODORO_MAX_REWARDED_PER_DAY){
+
+                reward = 0;
+
+            }
+
+            if(reward > 0){
+
+                xp += reward;
+                updateLevel();
+
+                pomodorosCompletedToday++;
+                localStorage.setItem("pomodorosCompletedToday", pomodorosCompletedToday);
+
+                totalPomodoroCompletions++;
+                localStorage.setItem("totalPomodoroCompletions", totalPomodoroCompletions);
+
+            }
+
+            const doneText = reward > 0
+                ? (current.label||"Pomodoro")+" завершено! +"+reward+" XP"
+                : (current.label||"Pomodoro")+" завершено! (XP не нараховується: сесія коротша за 5 хв або вичерпано ліміт дня)";
+
+            showToast("🎉 "+doneText);
 
             if(typeof pomodoroNotify !== "undefined" && pomodoroNotify && "Notification" in window && Notification.permission === "granted"){
 
                 if(typeof playNotificationSound === "function") playNotificationSound();
 
-                const pomodoroText = "🍅 "+(current.label||"Pomodoro")+" завершено! +20 XP";
+                const pomodoroText = "🍅 "+doneText;
 
                 if("serviceWorker" in navigator){
 
@@ -636,7 +940,7 @@ function runPomodoroInterval(t){
 
                         reg.showNotification("SelfDev", { body: pomodoroText, icon: "icon-192.png" });
 
-                    });
+                    }).catch(e=> console.error("Pomodoro notification:", e));
 
                 }else{
 
@@ -720,15 +1024,15 @@ function updatePomodoroTimerDisplay(t){
 
     if(el) el.innerText = formatPomodoroTime(t.remaining);
 
+    const pct = t.duration>0 ? Math.max(0, Math.min(100, (1-t.remaining/t.duration)*100)) : 0;
+
     const fill = document.getElementById("pt-fill-"+t.id);
 
-    if(fill){
+    if(fill) fill.style.width = pct+"%";
 
-        const pct = t.duration>0 ? Math.max(0, Math.min(100, (1-t.remaining/t.duration)*100)) : 0;
+    const ring = document.getElementById("pt-ring-"+t.id);
 
-        fill.style.width = pct+"%";
-
-    }
+    if(ring) ring.style.strokeDashoffset = (POMO_RING*(1-pct/100)).toFixed(2);
 
 }
 
@@ -752,20 +1056,30 @@ function renderPomodoroTimers(){
 
         const div = document.createElement("div");
 
-        div.className = "pomodoro-card"+(t.running ? " running" : "");
+        const paused = !t.running && t.remaining < t.duration;
+
+        div.className = "pomodoro-card"+(t.running ? " running" : "")+(paused ? " paused" : "");
 
         const pct = t.duration>0 ? Math.max(0, Math.min(100, (1-t.remaining/t.duration)*100)) : 0;
+        const status = t.running ? "Фокус" : paused ? "Пауза" : Math.round(t.duration/60)+" хв";
 
+        // id таймера — лише "pt"+цифри (див. normalizePomodoroTimer), тож безпечно в атрибутах
         div.innerHTML =
             '<div class="pomodoro-card-top">'+
-            '<b>'+t.label+'</b>'+
-            '<button class="pomodoro-remove" onclick="removePomodoroTimer(\''+t.id+'\')">✕</button>'+
+            '<b>'+escapeHtml(t.label)+'</b>'+
+            '<button type="button" class="pomodoro-remove" onclick="removePomodoroTimer(\''+t.id+'\')" aria-label="Видалити таймер">✕</button>'+
             '</div>'+
+            '<div class="pomo-ring">'+
+            '<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"/>'+
+            '<circle class="fill" id="pt-ring-'+t.id+'" cx="60" cy="60" r="52" stroke-dasharray="'+POMO_RING+'" stroke-dashoffset="'+(POMO_RING*(1-pct/100)).toFixed(2)+'"/></svg>'+
+            '<div class="pomo-ring-text">'+
             '<div class="pomodoro-card-time" id="pt-time-'+t.id+'">'+formatPomodoroTime(t.remaining)+'</div>'+
-            '<div class="pomodoro-progress"><div class="pomodoro-progress-fill" id="pt-fill-'+t.id+'" style="width:'+pct+'%"></div></div>'+
+            '<small>'+status+'</small>'+
+            '</div>'+
+            '</div>'+
             '<div class="pomodoro-card-actions">'+
-            '<button onclick="togglePomodoroTimer(\''+t.id+'\')">'+(t.running ? "⏸ Пауза" : "▶️ Старт")+'</button>'+
-            '<button onclick="resetPomodoroTimer(\''+t.id+'\')">🔄 Скинути</button>'+
+            '<button type="button" class="pomo-main" onclick="togglePomodoroTimer(\''+t.id+'\')">'+(t.running ? "⏸ Пауза" : paused ? "▶ Продовжити" : "▶ Старт")+'</button>'+
+            '<button type="button" class="pomo-reset" onclick="resetPomodoroTimer(\''+t.id+'\')" aria-label="Скинути таймер">↺</button>'+
             '</div>';
 
         container.appendChild(div);
@@ -808,6 +1122,8 @@ function initPomodoroTimers(){
 try{
 
     initPomodoroTimers();
+
+    window.addEventListener("load", ()=>{ try{ highlightPomodoroPreset(); }catch(e){} });
 
 }catch(e){
 
@@ -1038,12 +1354,26 @@ function claimAchievement(i){
 
 }
 
+// Черга: якщо за раз відкрилось кілька досягнень, раніше показувалось лише останнє
+// Досягнення можуть відкритись під час старту, ще до цього рядка, тож не перезаписуємо чергу
+var achievementModalQueue = achievementModalQueue || [];
+
 function showAchievementModal(name){
 
     const modal = document.getElementById("achievementModal");
     const title = document.getElementById("achievementModalTitle");
 
     if(!modal || !title) return;
+
+    if(modal.classList.contains("show")){
+
+        if(!achievementModalQueue) achievementModalQueue = [];
+
+        achievementModalQueue.push(name);
+
+        return;
+
+    }
 
     title.innerText = "🏆 " + name;
 
@@ -1058,6 +1388,14 @@ function closeAchievementModal(){
     const modal = document.getElementById("achievementModal");
 
     if(modal) modal.classList.remove("show");
+
+    if(achievementModalQueue && achievementModalQueue.length){
+
+        const next = achievementModalQueue.shift();
+
+        setTimeout(()=> showAchievementModal(next), 250);
+
+    }
 
 }
 
@@ -1109,6 +1447,8 @@ function renderHabits(){
 
 const list=document.getElementById("habitList");
 
+if(!list) return;
+
 list.innerHTML="";
 
 const order = getHabitOrder();
@@ -1125,54 +1465,34 @@ li.style.animationDelay = (Math.min(pos,10)*0.04)+"s";
 if(habit.done)
 li.classList.add("done");
 
-li.innerHTML=`
+li.innerHTML = taskRowHTML(habit, index, "Habit");
 
-<div>
-
-<b>${getSphereIcon(habit.category)} ${habit.name}</b><br>
-
-<small>📅 ${habit.created}</small><br>
-
-<small>✏️ ${habit.updated}</small>
-
-</div>
-
-<div>
-
-<button onclick="toggleHabitPin(${index})">
-
-${habit.pinned ? "📌" : "📍"}
-
-</button>
-
-<button onclick="toggleHabit(${index})">
-
-${habit.done ? "↩" : "✔"}
-
-</button>
-
-<button onclick="editHabit(${index})">
-
-✏️
-
-</button>
-
-<button onclick="deleteHabit(${index})">
-
-🗑
-
-</button>
-
-</div>
-
-`;
+li.dataset.category = habit.category || "personal";
+li.style.setProperty("--c", getSphereColor(habit.category));
 
 list.appendChild(li);
 
+if(typeof attachSwipe === "function"){
+
+    attachSwipe(li, {
+        onRight: ()=> toggleHabit(index),
+        onLeft: ()=> deleteHabit(index)
+    });
+
+}
+
 });
 
-document.getElementById("habitCount").innerText=
-totalHabitCompletions;
+if(typeof renderSphereFilter === "function") renderSphereFilter("habit", habits);
+
+const habitCountEl = document.getElementById("habitCount");
+
+if(habitCountEl) habitCountEl.innerText = totalHabitCompletions;
+
+// Після перемальовування фільтр пошуку злітав і показувались усі завдання
+const habitSearchEl = document.getElementById("habitSearch");
+
+if(habitSearchEl && habitSearchEl.value) searchHabits();
 
 }
 
@@ -1187,9 +1507,12 @@ document
 .querySelectorAll("#habitList li")
 .forEach(li=>{
 
+// Шукаємо лише в назві, а не в підписах свайпу («Виконано», «Видалити»)
+const textEl = li.querySelector(".task-text") || li;
+
 li.style.display=
 
-li.innerText
+textEl.innerText
 .toLowerCase()
 .includes(value)
 
@@ -1209,10 +1532,14 @@ function addHabit(){
 
 const input=document.getElementById("habitInput");
 
-if(input.value=="")
+if(!input) return;
+
+const name = input.value.trim().slice(0,200);
+
+if(name === "")
 return;
 
-if(habits.some(h=>h.name===input.value.trim())){
+if(habits.some(h=>h.name===name)){
 
 showToast("Таке завдання вже існує");
 
@@ -1220,13 +1547,19 @@ return;
 
 }
 
+const categoryEl = document.getElementById("habitCategory");
+const category = categoryEl && TASK_CATEGORIES.includes(categoryEl.value) ? categoryEl.value : "personal";
+const stamp = new Date().toLocaleString();
+
 habits.push({
-    name: input.value.trim(),
+    name: name,
     done: false,
     pinned: false,
-    category: document.getElementById("habitCategory") ? document.getElementById("habitCategory").value : "personal",
-    created: new Date().toLocaleString(),
-    updated: new Date().toLocaleString()
+    category: category,
+    created: stamp,
+    updated: stamp,
+    xpDay: "",
+    xpAwarded: false
 });
 
 input.value="";
@@ -1241,27 +1574,47 @@ updateDayProgress();
 
 function toggleHabit(index){
 
-const willBeDone = !habits[index].done;
+const habit = habits[index];
 
-habits[index].done = willBeDone;
+if(!habit) return;
+
+const today = localISODate();
+const willBeDone = !habit.done;
+
+habit.done = willBeDone;
+
+let rewarded = false;
 
 if(willBeDone){
 
-xp+=10;
-showToast("+10 XP 🎉");
+    // XP за одне завдання нараховується лише раз на день — інакше можна було
+    // нескінченно знімати й ставити галочку заради XP, серії та досягнень
+    if(habit.xpDay !== today){
 
-updateLevel();
+        habit.xpDay = today;
+        rewarded = true;
 
-totalHabitCompletions++;
-localStorage.setItem("totalHabitCompletions", totalHabitCompletions);
+        xp+=10;
+        showToast("+10 XP 🎉");
 
-ensureDailyStatsFresh();
-habitsCompletedToday++;
-localStorage.setItem("habitsCompletedToday", habitsCompletedToday);
+        updateLevel();
 
-registerStreakActivity();
+        totalHabitCompletions++;
+        localStorage.setItem("totalHabitCompletions", totalHabitCompletions);
 
-logActivity();
+        ensureDailyStatsFresh();
+        habitsCompletedToday++;
+        localStorage.setItem("habitsCompletedToday", habitsCompletedToday);
+
+        registerStreakActivity();
+
+        logActivity();
+
+    }else{
+
+        showToast("✔ XP за це завдання вже нараховано сьогодні");
+
+    }
 
 }
 
@@ -1272,24 +1625,42 @@ updateStats();
 checkAchievements();
 updateDayProgress();
 
-if(willBeDone){
+if(rewarded){
 
 const li = document.querySelector('#habitList [data-index="'+index+'"]');
-playCheckAnimation(li);
+playCheckAnimation(li, 10);
 
 }
 
 }
 
-function deleteHabit(index){
+// Підтвердження: нижня панель (ui.js), а якщо її немає — системний confirm
+async function askConfirm(title, message){
 
-if(!confirm("Видалити завдання?")) return;
+if(typeof uiConfirm === "function") return uiConfirm(title, message);
+
+return confirm(title);
+
+}
+
+async function deleteHabit(index){
+
+if(deletePending || !habits[index]) return;
+
+const target = habits[index];
+
+if(!(await askConfirm("Видалити завдання?", "«" + target.name + "» зникне зі списку."))) return;
+
+// Поки панель була відкрита, список міг змінитись
+if(deletePending || habits[index] !== target) return;
 
 const li = document.querySelector('#habitList [data-index="'+index+'"]');
 
 function finalizeDelete(){
 
     habits.splice(index,1);
+
+    deletePending = false;
 
     save();
     updateHistory();
@@ -1298,6 +1669,9 @@ function finalizeDelete(){
     updateDayProgress();
 
 }
+
+// Поки триває анімація видалення, індекси інших записів не можна чіпати
+deletePending = true;
 
 if(li){
 
@@ -1313,27 +1687,60 @@ if(li){
 
 }
 
-function editHabit(index){
+async function editHabit(index){
 
-const text=prompt(
+const item = habits[index];
 
-"Редагувати завдання",
+if(!item) return;
 
-habits[index].name
+let name = null;
+let category = item.category || "personal";
 
-);
+if(typeof uiSheet === "function"){
 
-if(text===null) return;
+    const r = await uiSheet({ title:"Редагувати завдання", mode:"input", value:item.name, category:category, okText:"Зберегти" });
 
-if(text.trim()=="") return;
+    if(!r) return;
 
-habits[index].name=text;
-habits[index].updated = new Date().toLocaleString();
+    name = r.value;
+    category = r.category || category;
 
+}else{
+
+    name = prompt("Редагувати завдання", item.name);
+
+    if(name === null) return;
+
+}
+
+// Поки панель була відкрита, список міг змінитись
+if(habits[index] !== item) return;
+
+const clean = String(name).trim().slice(0,200);
+
+if(clean==="") return;
+
+if(habits.some((x, i) => i !== index && x.name === clean)){
+
+showToast("Таке завдання вже існує");
+
+return;
+
+}
+
+const changed = clean !== item.name || category !== item.category;
+
+if(!changed) return;
+
+item.name = clean;
+item.category = TASK_CATEGORIES.includes(category) ? category : "personal";
+item.updated = new Date().toLocaleString();
 
 save();
 
 renderHabits();
+
+updateLifeSpheres();
 
 }
 
@@ -1385,13 +1792,9 @@ function renderGoals(){
 
 const list=document.getElementById("goalList");
 
-list.innerHTML="";
+if(!list) return;
 
-goals.forEach(goal => {
-    if (goal.pinned === undefined) goal.pinned = false;
-    if (!goal.created) goal.created = new Date().toLocaleString();
-    if (!goal.updated) goal.updated = goal.created;
-});
+list.innerHTML="";
 
 const order = getGoalOrder();
 
@@ -1407,51 +1810,29 @@ li.style.animationDelay = (Math.min(pos,10)*0.04)+"s";
 if(goal.done)
 li.classList.add("done");
 
-li.innerHTML=`
+li.innerHTML = taskRowHTML(goal, index, "Goal");
 
-<div>
-
-<b>${getSphereIcon(goal.category)} ${goal.name}</b><br>
-
-<small>📅 ${goal.created}</small><br>
-
-<small>✏️ ${goal.updated}</small>
-
-</div>
-
-<div>
-
-<button onclick="togglePin(${index})">
-
-${goal.pinned ? "📌" : "📍"}
-
-</button>
-
-<button onclick="toggleGoal(${index})">
-
-${goal.done ? "↩" : "✔"}
-
-</button>
-
-<button onclick="editGoal(${index})">
-
-✏️
-
-</button>
-
-<button onclick="deleteGoal(${index})">
-
-🗑
-
-</button>
-
-</div>
-
-`;
+li.dataset.category = goal.category || "personal";
+li.style.setProperty("--c", getSphereColor(goal.category));
 
 list.appendChild(li);
 
+if(typeof attachSwipe === "function"){
+
+    attachSwipe(li, {
+        onRight: ()=> toggleGoal(index),
+        onLeft: ()=> deleteGoal(index)
+    });
+
+}
+
 });
+
+if(typeof renderSphereFilter === "function") renderSphereFilter("goal", goals);
+
+const goalSearchEl = document.getElementById("goalSearch");
+
+if(goalSearchEl && goalSearchEl.value) searchGoals();
 
 }
 
@@ -1466,9 +1847,12 @@ document
 .querySelectorAll("#goalList li")
 .forEach(li=>{
 
+// Шукаємо лише в назві, а не в підписах свайпу («Виконано», «Видалити»)
+const textEl = li.querySelector(".task-text") || li;
+
 li.style.display=
 
-li.innerText
+textEl.innerText
 .toLowerCase()
 .includes(value)
 
@@ -1488,9 +1872,13 @@ function addGoal(){
 
 const input=document.getElementById("goalInput");
 
-if(input.value.trim()=="") return;
+if(!input) return;
 
-if(goals.some(g=>g.name===input.value.trim())){
+const name = input.value.trim().slice(0,200);
+
+if(name==="") return;
+
+if(goals.some(g=>g.name===name)){
 
 showToast("Така ціль вже існує");
 
@@ -1498,13 +1886,19 @@ return;
 
 }
 
+const categoryEl = document.getElementById("goalCategory");
+const category = categoryEl && TASK_CATEGORIES.includes(categoryEl.value) ? categoryEl.value : "personal";
+const stamp = new Date().toLocaleString();
+
 goals.push({
-    name: input.value.trim(),
+    name: name,
     done: false,
     pinned: false,
-    category: document.getElementById("goalCategory") ? document.getElementById("goalCategory").value : "personal",
-    created: new Date().toLocaleString(),
-    updated: new Date().toLocaleString()
+    category: category,
+    created: stamp,
+    updated: stamp,
+    xpDay: "",
+    xpAwarded: false
 });
 
 input.value="";
@@ -1522,28 +1916,46 @@ updateDayProgress();
 
 function toggleGoal(index){
 
-const willBeDone = !goals[index].done;
+const goal = goals[index];
 
-goals[index].done = willBeDone;
+if(!goal) return;
+
+const willBeDone = !goal.done;
+
+goal.done = willBeDone;
+
+let rewarded = false;
 
 if(willBeDone){
 
-xp+=25;
-showToast("+25 XP 🏆");
+    // Нагорода за ціль — один раз за все життя цілі (прапорець xpAwarded)
+    if(!goal.xpAwarded){
 
-updateLevel();
-launchConfetti();
+        goal.xpAwarded = true;
+        rewarded = true;
 
-totalGoalCompletions++;
-localStorage.setItem("totalGoalCompletions", totalGoalCompletions);
+        xp+=25;
+        showToast("+25 XP 🏆");
 
-ensureDailyStatsFresh();
-goalsCompletedToday++;
-localStorage.setItem("goalsCompletedToday", goalsCompletedToday);
+        updateLevel();
+        launchConfetti();
 
-registerStreakActivity();
+        totalGoalCompletions++;
+        localStorage.setItem("totalGoalCompletions", totalGoalCompletions);
 
-logActivity();
+        ensureDailyStatsFresh();
+        goalsCompletedToday++;
+        localStorage.setItem("goalsCompletedToday", goalsCompletedToday);
+
+        registerStreakActivity();
+
+        logActivity();
+
+    }else{
+
+        showToast("🏆 XP за цю ціль уже нараховано");
+
+    }
 
 }
 
@@ -1556,24 +1968,32 @@ updateStats();
 checkAchievements();
 updateDayProgress();
 
-if(willBeDone){
+if(rewarded){
 
 const li = document.querySelector('#goalList [data-index="'+index+'"]');
-playCheckAnimation(li);
+playCheckAnimation(li, 25);
 
 }
 
 }
 
-function deleteGoal(index){
+async function deleteGoal(index){
 
-if(!confirm("Видалити ціль?")) return;
+if(deletePending || !goals[index]) return;
+
+const target = goals[index];
+
+if(!(await askConfirm("Видалити ціль?", "«" + target.name + "» зникне зі списку."))) return;
+
+if(deletePending || goals[index] !== target) return;
 
 const li = document.querySelector('#goalList [data-index="'+index+'"]');
 
 function finalizeDelete(){
 
     goals.splice(index,1);
+
+    deletePending = false;
 
     save();
 
@@ -1583,6 +2003,8 @@ function finalizeDelete(){
     updateDayProgress();
 
 }
+
+deletePending = true;
 
 if(li){
 
@@ -1598,32 +2020,66 @@ if(li){
 
 }
 
-function editGoal(index){
+async function editGoal(index){
 
-const text=prompt(
+const item = goals[index];
 
-"Редагувати ціль",
+if(!item) return;
 
-goals[index].name
+let name = null;
+let category = item.category || "personal";
 
-);
+if(typeof uiSheet === "function"){
 
-if(text===null) return;
+    const r = await uiSheet({ title:"Редагувати ціль", mode:"input", value:item.name, category:category, okText:"Зберегти" });
 
-if(text.trim()=="") return;
+    if(!r) return;
 
-goals[index].name=text;
-goals[index].updated = new Date().toLocaleString();
+    name = r.value;
+    category = r.category || category;
+
+}else{
+
+    name = prompt("Редагувати ціль", item.name);
+
+    if(name === null) return;
+
+}
+
+// Поки панель була відкрита, список міг змінитись
+if(goals[index] !== item) return;
+
+const clean = String(name).trim().slice(0,200);
+
+if(clean==="") return;
+
+if(goals.some((x, i) => i !== index && x.name === clean)){
+
+showToast("Така ціль вже існує");
+
+return;
+
+}
+
+const changed = clean !== item.name || category !== item.category;
+
+if(!changed) return;
+
+item.name = clean;
+item.category = TASK_CATEGORIES.includes(category) ? category : "personal";
+item.updated = new Date().toLocaleString();
 
 save();
 
 renderGoals();
 
+updateLifeSpheres();
+
 }
 
 const lifeSpheres = [
     { key:"health", name:"Здоров'я", icon:"💪", color:"#22c55e" },
-    { key:"career", name:"Кар'єра", icon:"💼", color:"#6366f1" },
+    { key:"career", name:"Кар'єра", icon:"💼", color:"#3b82f6" },
     { key:"learning", name:"Навчання", icon:"📚", color:"#f97316" },
     { key:"personal", name:"Особисте", icon:"🌟", color:"#ec4899" }
 ];
@@ -1633,6 +2089,45 @@ function getSphereIcon(categoryKey){
 const sphere = lifeSpheres.find(s => s.key === (categoryKey || "personal"));
 
 return sphere ? sphere.icon : "🌟";
+
+}
+
+function getSphereColor(categoryKey){
+
+const sphere = lifeSpheres.find(s => s.key === (categoryKey || "personal"));
+
+return sphere ? sphere.color : "#6366f1";
+
+}
+
+// Рядок завдання/цілі: фон для свайпу + картка з кольором сфери.
+// kind = "Habit" | "Goal" — від нього залежать назви функцій у кнопках.
+function taskRowHTML(item, index, kind){
+
+const isGoal = kind === "Goal";
+const pinFn = isGoal ? "togglePin" : "toggleHabitPin";
+const edited = item.updated && item.updated !== item.created;
+
+return `
+<div class="swipe-bg" aria-hidden="true">
+<span class="sw-done">${item.done ? "↩ Повернути" : "✔ Виконано"}</span>
+<span class="sw-del">Видалити 🗑</span>
+</div>
+<div class="swipe-fg">
+<div class="task-main">
+<span class="sphere-chip" aria-hidden="true">${getSphereIcon(item.category)}</span>
+<div class="task-text">
+<b>${escapeHtml(item.name)}</b>
+<small>${edited ? "✏️ " + escapeHtml(item.updated) : "📅 " + escapeHtml(item.created)}</small>
+</div>
+</div>
+<div class="task-actions">
+<button type="button" class="act-pin" onclick="${pinFn}(${index})" aria-label="${item.pinned ? "Відкріпити" : "Закріпити"}">${item.pinned ? "📌" : "📍"}</button>
+<button type="button" class="act-done" onclick="toggle${kind}(${index})" aria-label="${item.done ? "Повернути" : "Виконати"}">${item.done ? "↩" : "✔"}</button>
+<button type="button" class="act-edit" onclick="edit${kind}(${index})" aria-label="Редагувати">✏️</button>
+<button type="button" class="act-del" onclick="delete${kind}(${index})" aria-label="Видалити">🗑</button>
+</div>
+</div>`;
 
 }
 
@@ -1765,7 +2260,7 @@ if(typeof renderJarvisCostumePicker === "function"){
 
 function showCompanionGreeting(){
 
-const today = new Date().toLocaleDateString();
+const today = localISODate();
 const lastGreeting = localStorage.getItem("lastCompanionGreeting");
 
 if(lastGreeting === today) return;
@@ -1803,6 +2298,68 @@ el.innerHTML =
 
 }
 
+// Плитки сторінки «Статистика» і стовпчики за 7 днів
+function updateStatsPage(){
+
+const set = (id, value) => { const el = document.getElementById(id); if(el) animateNumber(el, value); };
+
+set("statPomodoros", totalPomodoroCompletions);
+set("statLevel", level);
+set("statFreezes", streakFreezes);
+
+const xpEl = document.getElementById("statXp");
+
+if(xpEl) xpEl.innerText = xp + "/100 XP";
+
+const bars = document.getElementById("statWeekBars");
+
+if(!bars) return;
+
+const dayNames = ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"];
+const byDate = new Map(history.map(h => [h.date, h.percent]));
+
+bars.textContent = "";
+
+for(let i = 6; i >= 0; i--){
+
+    const d = new Date();
+
+    d.setDate(d.getDate() - i);
+
+    const iso = localISODate(d);
+    const percent = byDate.get(iso) || 0;
+
+    const col = document.createElement("div");
+
+    col.className = "week-bar" + (i === 0 ? " today" : "");
+    col.title = iso + ": " + percent + "%";
+
+    const track = document.createElement("div");
+
+    track.className = "week-bar-track";
+
+    const fill = document.createElement("div");
+
+    fill.className = "week-bar-fill";
+    fill.style.height = Math.max(4, percent) + "%";
+
+    track.appendChild(fill);
+
+    const label = document.createElement("small");
+
+    label.textContent = dayNames[d.getDay()];
+
+    const value = document.createElement("b");
+
+    value.textContent = percent + "%";
+
+    col.append(value, track, label);
+    bars.appendChild(col);
+
+}
+
+}
+
 function updateStats(){
 
 const habit=document.getElementById("habitCount");
@@ -1820,6 +2377,8 @@ updateJarvisWidget();
 updateLifeSpheres();
 
 renderDailyChallenges();
+
+updateStatsPage();
 
 if(typeof syncMyProfileToCloud === "function"){
 
@@ -1867,11 +2426,80 @@ animateNumber(numberEl, percent);
 
 }
 
+// Кільце прогресу на головній (bento)
+const ring = document.getElementById("dayRingFill");
+
+if(ring){
+
+    const circumference = 238.76;
+
+    ring.style.strokeDashoffset = String(circumference * (1 - percent/100));
+
+}
+
+const dayText = document.getElementById("dayProgressText");
+
+if(dayText && document.getElementById("dayRingFill")){
+
+    dayText.innerText = total === 0
+        ? "Додай перші завдання"
+        : done + " з " + total + " виконано";
+
+}
+
 updateDailyBonusState();
+
+publishWidgetSummary();
+
+}
+
+// Короткий підсумок дня для віджета (Windows/Edge): сервіс-воркер не має доступу
+// до localStorage, тому застосунок кладе підсумок у кеш, звідки його читає sw.js.
+function publishWidgetSummary(){
+
+try{
+
+    if(!("caches" in window)) return;
+
+    const total = habits.length + goals.length;
+    const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
+
+    const goalsSummary = total===0
+        ? "Додай перші завдання та цілі 🎯"
+        : "Сьогодні виконано "+done+" із "+total+" 🎯";
+
+    const body = JSON.stringify({ goalsSummary: goalsSummary, date: localISODate() });
+
+    caches.open("selfdev-widget")
+        .then(cache => cache.put("widgets/summary.json", new Response(body, { headers: { "Content-Type": "application/json" } })))
+        .then(()=>{
+
+            if("serviceWorker" in navigator && navigator.serviceWorker.controller){
+
+                navigator.serviceWorker.controller.postMessage({ type: "widget-refresh" });
+
+            }
+
+        })
+        .catch(()=>{});
+
+}catch(e){
+
+    console.warn("Widget summary:", e);
+
+}
 
 }
 
 let dailyBonusClaimedDate = localStorage.getItem("dailyBonusClaimedDate") || "";
+
+// Порівнюємо і зі старим форматом дати (toLocaleDateString), щоб у день оновлення
+// бонус не можна було забрати вдруге.
+function isDailyBonusClaimedToday(){
+
+return dailyBonusClaimedDate === localISODate() || dailyBonusClaimedDate === new Date().toLocaleDateString();
+
+}
 
 function updateDailyBonusState(){
 
@@ -1894,9 +2522,7 @@ const text = document.getElementById("dailyBonusText");
 
 if(!btn || !text) return;
 
-const today = new Date().toLocaleDateString();
-
-const alreadyClaimed = dailyBonusClaimedDate === today;
+const alreadyClaimed = isDailyBonusClaimedToday();
 
 btn.classList.remove("ready","claimed");
 
@@ -1928,13 +2554,13 @@ if(alreadyClaimed){
 
 function claimDailyBonus(){
 
-const today = new Date().toLocaleDateString();
+ensureDailyStatsFresh();
 
-if(dailyBonusClaimedDate === today) return;
+if(!dailyBonusReady || isDailyBonusClaimedToday()) return;
 
-dailyBonusClaimedDate = today;
+dailyBonusClaimedDate = localISODate();
 
-localStorage.setItem("dailyBonusClaimedDate", today);
+localStorage.setItem("dailyBonusClaimedDate", dailyBonusClaimedDate);
 
 xp += 50;
 
@@ -1968,8 +2594,7 @@ setTimeout(()=> overlay.classList.remove("show"), 1900);
 
 function updateStreak(){
 
-const now = new Date();
-const todayISO = now.toISOString().slice(0,10);
+const todayISO = localISODate();
 
 if(lastOpen !== todayISO){
 
@@ -1985,6 +2610,22 @@ h.done=false;
 
 lastOpen=todayISO;
 
+// Якщо пропущено більше днів, ніж є заморозок, серія обривається одразу,
+// а не висить «живою» на екрані до наступного виконання завдання
+if(ISO_DATE_RE.test(lastStreakDate) && streak > 0){
+
+const missedDays = daysBetweenISO(lastStreakDate, todayISO) - 1;
+
+if(missedDays > 0 && streakFreezes < missedDays){
+
+streak = 0;
+
+localStorage.setItem("streak", streak);
+
+}
+
+}
+
 save();
 
 renderHabits();
@@ -1998,17 +2639,19 @@ updateDayProgress();
 
 function registerStreakActivity(){
 
-const now = new Date();
-const todayISO = now.toISOString().slice(0,10);
+const todayISO = localISODate();
 
 if(lastStreakDate === todayISO) return;
 
-const isLegacyFormat = lastStreakDate !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(lastStreakDate);
+const isLegacyFormat = lastStreakDate !== "" && !ISO_DATE_RE.test(lastStreakDate);
 
 if(lastStreakDate !== "" && !isLegacyFormat){
 
-const lastDate = new Date(lastStreakDate+"T00:00:00");
-const diffDays = Math.round((now - lastDate) / 86400000);
+// Різниця у календарних днях (а не в мілісекундах від UTC-півночі)
+const diffDays = daysBetweenISO(lastStreakDate, todayISO);
+
+// Дата «з минулого» (змінили годинник назад) — серію не чіпаємо
+if(diffDays < 0) return;
 
 if(diffDays > 1){
 
@@ -2018,7 +2661,7 @@ if(streakFreezes >= missedDays){
 
 streakFreezes -= missedDays;
 localStorage.setItem("streakFreezes", streakFreezes);
-showToast(`❄️ Використано ${missedDays} заморозку(и) — стрік збережено!`);
+showToast(`❄️ Використано ${missedDays} ${pluralUk(missedDays, "заморозку", "заморозки", "заморозок")} — стрік збережено!`);
 
 }else{
 
@@ -2038,7 +2681,7 @@ localStorage.setItem("streak", streak);
 
 setTimeout(()=>{
 
-    showToast("🔥 Стрік: "+streak+" "+(streak===1?"день":"днів"));
+    showToast("🔥 Стрік: "+streak+" "+pluralUk(streak, "день", "дні", "днів"));
 
 }, 1600);
 
@@ -2064,6 +2707,16 @@ document.body.classList.remove("light");
 
 localStorage.setItem("theme",theme);
 
+// Підписи графіка мають бути видні і на світлій темі
+if(window.achievementChartInstance){
+
+window.achievementChartInstance.destroy();
+window.achievementChartInstance = null;
+
+}
+
+drawAchievementChart();
+
 }
 
 if(theme=="light"){
@@ -2072,38 +2725,71 @@ document.body.classList.add("light");
 
 }
 
-function showDailyQuote(){
+// ----------------
+// Думка дня: показ, «Зберегти», «Поділитися», «Ще одна»
+// ----------------
 
-const days =
-Math.floor(Date.now()/86400000);
+var currentQuote = null;
+var quoteTypingTimer = null;
 
-const quote =
-quotes[days % quotes.length];
+function readFavoriteQuotes(){
 
-const q=document.getElementById("quoteText");
+    const list = safeArray("favoriteQuotes");
 
-document.getElementById("quoteCategory").innerText =
-quote.category;
+    return list.filter(t => typeof t === "string").slice(-200);
 
-q.style.opacity=1;
-q.innerText="";
+}
+
+function renderQuote(quote, animate){
+
+const q = document.getElementById("quoteText");
+const cat = document.getElementById("quoteCategory");
+
+if(!q || !quote) return;
+
+currentQuote = quote;
+
+if(cat) cat.innerText = quote.category || "";
+
+updateQuoteLikeButton();
+
+if(quoteTypingTimer){
+
+    clearTimeout(quoteTypingTimer);
+    quoteTypingTimer = null;
+
+}
+
+const text = quote.text;
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+if(!animate || reduceMotion){
+
+    q.classList.remove("typing");
+    q.innerText = text;
+
+    return;
+
+}
+
+q.innerText = "";
 q.classList.add("typing");
 
-let i=0;
-const text=quote.text;
+let i = 0;
 
 function typeChar(){
 
-    if(i<=text.length){
+    if(i <= text.length){
 
-        q.innerText=text.slice(0,i);
+        q.innerText = text.slice(0, i);
         i++;
 
-        setTimeout(typeChar,22);
+        quoteTypingTimer = setTimeout(typeChar, 22);
 
     }else{
 
         q.classList.remove("typing");
+        quoteTypingTimer = null;
 
     }
 
@@ -2113,19 +2799,134 @@ typeChar();
 
 }
 
+function showDailyQuote(){
+
+if(typeof quotes === "undefined" || !quotes.length) return;
+
+// Раніше брався UTC-день, і цитата змінювалась о 02:00–03:00 за Києвом, а не опівночі
+renderQuote(quotes[localDayNumber() % quotes.length], true);
+
+}
+
+function showAnotherQuote(){
+
+if(typeof quotes === "undefined" || quotes.length < 2) return;
+
+let next = currentQuote;
+
+while(next === currentQuote) next = quotes[Math.floor(Math.random() * quotes.length)];
+
+renderQuote(next, true);
+
+}
+
+function updateQuoteLikeButton(){
+
+const btn = document.getElementById("quoteLikeBtn");
+
+if(!btn || !currentQuote) return;
+
+const liked = readFavoriteQuotes().includes(currentQuote.text);
+
+btn.setAttribute("aria-pressed", liked ? "true" : "false");
+btn.innerText = liked ? "♥ Збережено" : "♡ Зберегти";
+
+}
+
+function toggleQuoteFavorite(){
+
+if(!currentQuote) return;
+
+let list = readFavoriteQuotes();
+
+if(list.includes(currentQuote.text)){
+
+    list = list.filter(t => t !== currentQuote.text);
+    showToast("Прибрано з улюблених");
+
+}else{
+
+    list.push(currentQuote.text);
+    showToast("♥ Цитату збережено в улюблені");
+
+}
+
+try{ localStorage.setItem("favoriteQuotes", JSON.stringify(list)); }catch(e){}
+
+updateQuoteLikeButton();
+
+}
+
+function shareQuote(){
+
+if(!currentQuote) return;
+
+const text = "«" + currentQuote.text + "» — SelfDev";
+
+if(navigator.share){
+
+    navigator.share({ text: text }).catch(()=>{});
+
+    return;
+
+}
+
+if(navigator.clipboard && navigator.clipboard.writeText){
+
+    navigator.clipboard.writeText(text)
+        .then(()=> showToast("📋 Цитату скопійовано"))
+        .catch(()=> showToast(text));
+
+    return;
+
+}
+
+showToast(text);
+
+}
+
+// var, а не let: showToast може викликатись під час старту, ще до цього рядка
+var toastTimer = null;
+
 function showToast(text){
 
 const toast=document.getElementById("toast");
+
+if(!toast) return;
 
 toast.innerText=text;
 
 toast.classList.add("show");
 
-setTimeout(()=>{
+// Таймер попереднього тосту інакше ховав новий раніше часу
+if(toastTimer) clearTimeout(toastTimer);
+
+toastTimer = setTimeout(()=>{
 
 toast.classList.remove("show");
+toastTimer = null;
 
 },2500);
+
+}
+
+// Українські відмінки: 1 день, 2 дні, 5 днів, 21 день
+function pluralUk(n, one, few, many){
+
+const mod10 = n % 10;
+const mod100 = n % 100;
+
+if(mod10 === 1 && mod100 !== 11) return one;
+if(mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+
+return many;
+
+}
+
+// Номер дня за місцевим часом — однаковий з sw.js (цитата для віджета)
+function localDayNumber(){
+
+return Math.floor(isoToUTCms(localISODate()) / 86400000);
 
 }
 
@@ -2133,12 +2934,28 @@ function exportData(){
 
 const data={
 
+app: "SelfDev",
+version: 2,
+exportedAt: new Date().toISOString(),
+
 habits,
 goals,
+notes,
+history,
+activityLog,
+
 xp,
 level,
 streak,
-notes
+streakFreezes,
+lastStreakDate,
+
+totalHabitCompletions,
+totalGoalCompletions,
+totalPomodoroCompletions,
+
+unlockedAchievements,
+claimedAchievements
 
 };
 
@@ -2150,13 +2967,21 @@ const blob=new Blob(
 
 );
 
+const url = URL.createObjectURL(blob);
+
 const a=document.createElement("a");
 
-a.href=URL.createObjectURL(blob);
+a.href=url;
 
 a.download="SelfDev_Backup.json";
 
+document.body.appendChild(a);
+
 a.click();
+
+a.remove();
+
+setTimeout(()=> URL.revokeObjectURL(url), 1000);
 
 showToast("💾 Дані експортовано");
 
@@ -2164,35 +2989,151 @@ showToast("💾 Дані експортовано");
 
 function importData(event){
 
-const file=event.target.files[0];
+const input = event.target;
+const file = input.files && input.files[0];
 
 if(!file) return;
 
+if(file.size > 5*1024*1024){
+
+showToast("🚫 Файл завеликий для резервної копії SelfDev");
+
+input.value = "";
+
+return;
+
+}
+
 const reader=new FileReader();
+
+reader.onerror=function(){
+
+showToast("🚫 Не вдалося прочитати файл");
+
+input.value = "";
+
+};
 
 reader.onload=function(){
 
-const data=JSON.parse(reader.result);
+let data = null;
 
-habits=data.habits||[];
+try{
 
-goals=data.goals||[];
+data = JSON.parse(reader.result);
 
-xp=data.xp||0;
+}catch(e){
 
-level=data.level||1;
+data = null;
 
-streak=data.streak||0;
+}
 
-notes=data.notes||[];
+if(!data || typeof data !== "object" || Array.isArray(data) || (!Array.isArray(data.habits) && !Array.isArray(data.goals))){
+
+showToast("🚫 Це не схоже на резервну копію SelfDev");
+
+input.value = "";
+
+return;
+
+}
+
+// Підтвердження асинхронне (нижня панель), тому решта імпорту — у колбеку нижче
+askConfirm("Замінити всі дані?", "Імпорт замінить усі поточні дані даними з файлу.").then(ok=>{
+
+if(!ok){
+
+input.value = "";
+
+return;
+
+}
+
+applyImportedData(data);
+
+});
+
+};
+
+reader.readAsText(file);
+
+}
+
+function applyImportedData(data){
+
+{
+
+const list = v => Array.isArray(v) ? v.slice(0,2000) : [];
+const achievementIds = v => list(v).map(Number).filter(i => Number.isInteger(i) && i >= 0 && i < achievementDefs.length);
+
+habits = list(data.habits).map(normalizeTask).filter(Boolean);
+goals = list(data.goals).map(normalizeTask).filter(Boolean);
+notes = list(data.notes).map(normalizeNote).filter(Boolean);
+
+// Поля, яких немає в старих резервних копіях (v1), лишаємо як є
+if(Array.isArray(data.history)) history = normalizeHistory(data.history);
+if(Array.isArray(data.activityLog)) activityLog = normalizeActivityLog(data.activityLog);
+
+xp = clampInt(data.xp, 0, 1000000, 0);
+level = clampInt(data.level, 1, MAX_LEVEL, 1);
+streak = clampInt(data.streak, 0, 100000, 0);
+
+if(data.streakFreezes !== undefined){
+
+streakFreezes = clampInt(data.streakFreezes, 0, 1000, 0);
+localStorage.setItem("streakFreezes", streakFreezes);
+
+}
+
+if(typeof data.lastStreakDate === "string" && ISO_DATE_RE.test(data.lastStreakDate) && data.lastStreakDate <= localISODate()){
+
+lastStreakDate = data.lastStreakDate;
+localStorage.setItem("lastStreakDate", lastStreakDate);
+
+}
+
+if(data.totalHabitCompletions !== undefined){
+
+totalHabitCompletions = clampInt(data.totalHabitCompletions, 0, 10000000, 0);
+localStorage.setItem("totalHabitCompletions", totalHabitCompletions);
+
+}
+
+if(data.totalGoalCompletions !== undefined){
+
+totalGoalCompletions = clampInt(data.totalGoalCompletions, 0, 10000000, 0);
+localStorage.setItem("totalGoalCompletions", totalGoalCompletions);
+
+}
+
+if(data.totalPomodoroCompletions !== undefined){
+
+totalPomodoroCompletions = clampInt(data.totalPomodoroCompletions, 0, 10000000, 0);
+localStorage.setItem("totalPomodoroCompletions", totalPomodoroCompletions);
+
+}
+
+if(Array.isArray(data.unlockedAchievements)){
+
+unlockedAchievements = achievementIds(data.unlockedAchievements);
+localStorage.setItem("unlockedAchievements", JSON.stringify(unlockedAchievements));
+
+}
+
+if(Array.isArray(data.claimedAchievements)){
+
+claimedAchievements = achievementIds(data.claimedAchievements);
+localStorage.setItem("claimedAchievements", JSON.stringify(claimedAchievements));
+
+}
+
+localStorage.setItem("activityLog", JSON.stringify(activityLog));
 
 save();
 
 location.reload();
 
-};
-
-reader.readAsText(file);
+}
 
 }
 
@@ -2204,38 +3145,49 @@ if(!list) return;
 
 list.innerHTML = "";
 
-notes.forEach((noteItem, index)=>{
+if(notes.length === 0){
+
+    list.innerHTML = '<p class="empty-state">📖 Тут з\'являться твої записи. Почни з одного речення про сьогоднішній день.</p>';
+
+    return;
+
+}
+
+// Нові записи — зверху; індекс у кнопках лишається справжнім індексом у масиві
+notes.map((n, i) => i).reverse().forEach((index, pos)=>{
+
+    const noteItem = notes[index];
+    const edited = noteItem.updated && noteItem.updated !== noteItem.created;
 
     const li = document.createElement("li");
 
+    li.className = "note-card";
     li.dataset.index = index;
-    li.style.animationDelay = (Math.min(index,10)*0.04)+"s";
+    li.style.animationDelay = (Math.min(pos,10)*0.04)+"s";
 
     li.innerHTML = `
-
-        <div>
-
-        <div style="white-space:pre-wrap">${noteItem.text}</div><br>
-
-        <small>📅 ${noteItem.created}</small><br>
-
-        <small>✏️ ${noteItem.updated}</small>
-
+        <div class="note-body">${escapeHtml(noteItem.text)}</div>
+        <div class="note-foot">
+        <small>${edited ? "✏️ " + escapeHtml(noteItem.updated) : "📅 " + escapeHtml(noteItem.created)}</small>
+        <div class="task-actions">
+        <button type="button" onclick="editNote(${index})" aria-label="Редагувати запис">✏️</button>
+        <button type="button" class="act-note-del" onclick="deleteNote(${index})" aria-label="Видалити запис">🗑</button>
         </div>
-
-        <div>
-
-        <button onclick="editNote(${index})">✏️</button>
-
-        <button onclick="deleteNote(${index})">🗑</button>
-
         </div>
-
     `;
 
     list.appendChild(li);
 
 });
+
+}
+
+function updateNoteCounter(){
+
+const input = document.getElementById("noteInput");
+const counter = document.getElementById("noteCounter");
+
+if(input && counter) counter.innerText = input.value.length + " / 5000";
 
 }
 
@@ -2245,13 +3197,17 @@ const input = document.getElementById("noteInput");
 
 if(!input || input.value.trim()==="") return;
 
+const stamp = new Date().toLocaleString();
+
 notes.push({
-    text: input.value.trim(),
-    created: new Date().toLocaleString(),
-    updated: new Date().toLocaleString()
+    text: input.value.trim().slice(0,5000),
+    created: stamp,
+    updated: stamp
 });
 
 input.value = "";
+
+updateNoteCounter();
 
 save();
 renderNotes();
@@ -2260,25 +3216,47 @@ showToast("📖 Нотатку додано");
 
 }
 
-function editNote(index){
+async function editNote(index){
 
-const text = prompt("Редагувати нотатку", notes[index].text);
+const note = notes[index];
 
-if(text===null) return;
+if(!note) return;
+
+let text = null;
+
+if(typeof uiSheet === "function"){
+
+    const r = await uiSheet({ title:"Редагувати нотатку", mode:"area", value:note.text, okText:"Зберегти" });
+
+    text = r ? r.value : null;
+
+}else{
+
+    text = prompt("Редагувати нотатку", note.text);
+
+}
+
+if(text===null || notes[index] !== note) return;
 
 if(text.trim()==="") return;
 
-notes[index].text = text;
-notes[index].updated = new Date().toLocaleString();
+note.text = text.slice(0,5000);
+note.updated = new Date().toLocaleString();
 
 save();
 renderNotes();
 
 }
 
-function deleteNote(index){
+async function deleteNote(index){
 
-if(!confirm("Видалити нотатку?")) return;
+if(deletePending || !notes[index]) return;
+
+const target = notes[index];
+
+if(!(await askConfirm("Видалити нотатку?", "Її не можна буде відновити."))) return;
+
+if(deletePending || notes[index] !== target) return;
 
 const li = document.querySelector('#notesList [data-index="'+index+'"]');
 
@@ -2286,10 +3264,14 @@ function finalizeDelete(){
 
     notes.splice(index,1);
 
+    deletePending = false;
+
     save();
     renderNotes();
 
 }
+
+deletePending = true;
 
 if(li){
 
@@ -2307,6 +3289,8 @@ if(li){
 
 function togglePin(index){
 
+    if(!goals[index]) return;
+
     goals[index].pinned = !goals[index].pinned;
 
     save();
@@ -2316,6 +3300,8 @@ function togglePin(index){
 }
 
 function toggleHabitPin(index){
+
+    if(!habits[index]) return;
 
     habits[index].pinned = !habits[index].pinned;
 
@@ -2329,7 +3315,9 @@ function changePomodoro(step){
 
     const input = document.getElementById("pomodoroMinutes");
 
-    let value = Number(input.value);
+    if(!input) return;
+
+    let value = Number(input.value) || 0;
 
     value += step;
 
@@ -2337,6 +3325,36 @@ function changePomodoro(step){
     if(value > 180) value = 180;
 
     input.value = value;
+
+    highlightPomodoroPreset();
+
+}
+
+function setPomodoroPreset(minutes){
+
+    const input = document.getElementById("pomodoroMinutes");
+
+    if(!input) return;
+
+    input.value = clampInt(minutes, 1, 180, 25);
+
+    highlightPomodoroPreset();
+
+}
+
+function highlightPomodoroPreset(){
+
+    const input = document.getElementById("pomodoroMinutes");
+    const value = input ? Number(input.value) : 0;
+
+    document.querySelectorAll(".preset-row button").forEach(b=>{
+
+        const on = Number(b.dataset.min) === value;
+
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+
+    });
 
 }
 
@@ -2383,11 +3401,13 @@ function openPage(page){
 
     }
 
+    if(typeof jarvisReact === "function") jarvisReact("page");
+
 }
 
 function updateHistory(){
 
-    const today = new Date().toISOString().slice(0,10);
+    const today = localISODate();
 
     const doneHabits = habits.filter(h => h.done).length;
     const doneGoals = goals.filter(g => g.done).length;
@@ -2433,15 +3453,16 @@ if(!container) return;
 container.innerHTML = "";
 
 const days = 91;
-const now = new Date();
+
+const percentByDate = new Map();
+
+history.forEach(h => percentByDate.set(h.date, h.percent));
 
 for(let i=days-1;i>=0;i--){
 
-    const d = new Date(now.getTime() - i*86400000);
-    const iso = d.toISOString().slice(0,10);
+    const iso = isoDaysAgo(i);
 
-    const entry = history.find(h=>h.date===iso);
-    const percent = entry ? entry.percent : 0;
+    const percent = percentByDate.has(iso) ? percentByDate.get(iso) : 0;
 
     let level = 0;
 
@@ -2474,9 +3495,11 @@ function updateWeeklySummary(){
 
     function dateStr(offset){
 
-        const d = new Date(now.getTime() - offset*86400000);
+        const d = new Date();
 
-        return { iso: d.toISOString().slice(0,10), dayIndex: d.getDay() };
+        d.setDate(d.getDate() - offset);
+
+        return { iso: localISODate(d), dayIndex: d.getDay() };
 
     }
 
@@ -2603,16 +3626,13 @@ function getChartData(){
 
         for(let i=13;i>=0;i--){
 
-            const d = new Date(now.getTime() - i*86400000);
-            const iso = d.toISOString().slice(0,10);
-
-            last14.push({ date: iso, count: 0 });
+            last14.push({ date: isoDaysAgo(i), count: 0 });
 
         }
 
         activityLog.forEach(ts=>{
 
-            const iso = new Date(ts).toISOString().slice(0,10);
+            const iso = localISODate(new Date(ts));
             const day = last14.find(d=>d.date===iso);
 
             if(day) day.count++;
@@ -2639,17 +3659,27 @@ function getChartData(){
         const labels = [];
         const data = [];
 
+        const todayMid = new Date();
+
+        todayMid.setHours(0,0,0,0);
+
         for(let i=bucketsCount-1;i>=0;i--){
 
-            const end = new Date(Date.now() - i*daysPerBucket*86400000);
-            const start = new Date(end.getTime() - (daysPerBucket-1)*86400000);
+            const endDay = new Date(todayMid);
+            endDay.setDate(endDay.getDate() - i*daysPerBucket);
 
-            const startTs = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
-            const endTs = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime() + 86400000;
+            const startDay = new Date(endDay);
+            startDay.setDate(startDay.getDate() - (daysPerBucket-1));
+
+            const nextDay = new Date(endDay);
+            nextDay.setDate(nextDay.getDate() + 1);
+
+            const startTs = startDay.getTime();
+            const endTs = nextDay.getTime();
 
             const count = activityLog.filter(ts => ts >= startTs && ts < endTs).length;
 
-            labels.push(`${start.getDate()}.${start.getMonth()+1}`);
+            labels.push(`${startDay.getDate()}.${startDay.getMonth()+1}`);
             data.push(count);
 
         }
@@ -2721,6 +3751,10 @@ function drawAchievementChart(){
 
     const { labels, data, label, isCount } = getChartData();
 
+    const isLight = document.body.classList.contains("light");
+    const tickColor = isLight ? "#475569" : "#94a3b8";
+    const legendColor = isLight ? "#1e293b" : "#e2e8f0";
+
     if(window.achievementChartInstance){
 
         window.achievementChartInstance.data.labels = labels;
@@ -2762,12 +3796,13 @@ function drawAchievementChart(){
                 y: {
                     min: 0,
                     max: isCount ? undefined : 100,
-                    ticks: { color: "#94a3b8" },
+                    // Кількість завдань — ціле число, без «0,1 завдання» на осі
+                    ticks: { color: tickColor, precision: 0 },
                     grid: { color: "rgba(148,163,184,0.15)" }
                 },
 
                 x: {
-                    ticks: { color: "#94a3b8" },
+                    ticks: { color: tickColor },
                     grid: { color: "rgba(148,163,184,0.05)" }
                 }
 
@@ -2776,7 +3811,7 @@ function drawAchievementChart(){
             plugins: {
 
                 legend: {
-                    labels: { color: "#e2e8f0" }
+                    labels: { color: legendColor }
                 }
 
             }
@@ -2797,12 +3832,14 @@ window.addEventListener("load", () => {
         if(goalSortSelect) goalSortSelect.value = goalSortMode;
     }catch(e){ console.error("sort select init:", e); }
 
+    // Новий день обробляємо ПЕРШИМ: інакше updateDayProgress бачив вчорашні виконані
+    // звички, ставив сьогоднішній прогрес 100% і відкривав щоденний бонус «задарма».
+    try{ updateStreak(); }catch(e){ console.error("updateStreak:", e); }
     try{ renderHabits(); }catch(e){ console.error("renderHabits:", e); }
     try{ renderGoals(); }catch(e){ console.error("renderGoals:", e); }
     try{ updateStats(); }catch(e){ console.error("updateStats:", e); }
     try{ updateDayProgress(); }catch(e){ console.error("updateDayProgress:", e); }
     try{ showDailyQuote(); }catch(e){ console.error("showDailyQuote:", e); }
-    try{ updateStreak(); }catch(e){ console.error("updateStreak:", e); }
     try{ updateAchievements(); }catch(e){ console.error("updateAchievements:", e); }
     try{ checkAchievements(); }catch(e){ console.error("checkAchievements:", e); }
     try{ drawAchievementChart(); }catch(e){ console.error("drawAchievementChart:", e); }
@@ -2810,6 +3847,23 @@ window.addEventListener("load", () => {
     try{ updateLifeSpheres(); }catch(e){ console.error("updateLifeSpheres:", e); }
     try{ renderActivityHeatmap(); }catch(e){ console.error("renderActivityHeatmap:", e); }
     try{ renderNotes(); }catch(e){ console.error("renderNotes:", e); }
+
+    // Ярлики з manifest.json (?page=habits / goals / timer) раніше нічого не робили
+    try{
+
+        const requestedPage = new URLSearchParams(location.search).get("page");
+
+        if(requestedPage && /^[a-z]+$/.test(requestedPage)){
+
+            const pageEl = document.getElementById(requestedPage);
+
+            if(pageEl && pageEl.classList.contains("page")) openPage(requestedPage);
+
+        }
+
+    }catch(e){ console.error("page shortcut:", e); }
+
+    try{ publishWidgetSummary(); }catch(e){ console.error("publishWidgetSummary:", e); }
 
     try{
 
@@ -2825,7 +3879,7 @@ window.addEventListener("load", () => {
 if("serviceWorker" in navigator){
 
 try{
-navigator.serviceWorker.register("sw.js");
+navigator.serviceWorker.register("sw.js").catch(e=> console.error("service worker register:", e));
 }catch(e){ console.error("service worker register:", e); }
 
 }
@@ -2835,8 +3889,8 @@ navigator.serviceWorker.register("sw.js");
 // ----------------
 
 let notifyEnabled = localStorage.getItem("notifyEnabled") === "true";
-let notifyVolume = Number(localStorage.getItem("notifyVolume"));
-if(isNaN(notifyVolume)) notifyVolume = 70;
+// Раніше Number(null) давав 0, тож за замовчуванням звук сповіщень був вимкнений
+let notifyVolume = clampInt(safeNumber("notifyVolume", 70), 0, 100, 70);
 let pomodoroNotify = localStorage.getItem("pomodoroNotify") !== "false";
 let notifyTime = localStorage.getItem("notifyTime") || "09:00";
 let lastNotifiedDate = localStorage.getItem("lastNotifiedDate") || "";
@@ -2857,13 +3911,15 @@ function updateNotifyStatus(){
 
     }else if(notifyEnabled && Notification.permission === "granted"){
 
-        statusEl.innerText = "✅ Увімкнено щодня о " + notifyTime;
+        statusEl.innerText = "✅ Щодня о " + notifyTime;
 
     }else{
 
-        statusEl.innerText = "Сповіщення вимкнено";
+        statusEl.innerText = "Вимкнено";
 
     }
+
+    statusEl.classList.toggle("on", notifyEnabled && "Notification" in window && Notification.permission === "granted");
 
 }
 
@@ -2871,7 +3927,7 @@ function enableNotifications(){
 
     if(!("Notification" in window)){
 
-        alert("Ваш браузер не підтримує сповіщення");
+        showToast("🚫 Браузер не підтримує сповіщення");
 
         return;
 
@@ -3057,7 +4113,7 @@ function checkReminder(){
         String(now.getHours()).padStart(2,"0") + ":" +
         String(now.getMinutes()).padStart(2,"0");
 
-    const today = now.toLocaleDateString();
+    const today = localISODate(now);
 
     if(current >= notifyTime && lastNotifiedDate !== today){
 
@@ -3097,6 +4153,35 @@ function checkReminder(){
 }
 
 setInterval(checkReminder, 30000);
+
+// Якщо застосунок лишився відкритим після опівночі (або вкладку розбудили зі сну),
+// скидаємо щоденні речі: звички, лічильники дня, виклики, серію.
+function checkDayRollover(){
+
+    try{
+
+        if(lastOpen && lastOpen !== localISODate()){
+
+            updateStreak();
+            renderDailyChallenges();
+
+        }
+
+    }catch(e){
+
+        console.error("checkDayRollover:", e);
+
+    }
+
+}
+
+setInterval(checkDayRollover, 60000);
+
+document.addEventListener("visibilitychange", ()=>{
+
+    if(!document.hidden) checkDayRollover();
+
+});
 
 window.addEventListener("load", () => {
 

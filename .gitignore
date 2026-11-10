@@ -1,7 +1,23 @@
 # Секрети — не комітити!
 gemini-config.js
+.env
+.env.*
+*.pem
+*.key
+serviceAccount*.json
+firebase-adminsdk*.json
 
-# Системні файли
+# Системні файли та залежності
 .DS_Store
 Thumbs.db
 node_modules/
+
+# Редактори
+.vscode/
+.idea/
+*.swp
+
+# Локальні макети та налаштування — не публікувати
+design-preview.html
+.claude/
+jarvis-skins/

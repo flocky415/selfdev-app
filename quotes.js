@@ -1,3 +1,8 @@
+/*
+ * SelfDev — цитати
+ * © 2026 Roman Chelyk. Усі права захищено. / All rights reserved.
+ */
+
 window.quotes = [
 
 {text:"Кожен день — це новий шанс стати кращою версією себе.",category:"🌱 Саморозвиток"},

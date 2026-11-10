@@ -24,9 +24,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create gemini-config.js from secret
+      # Якщо задано JARVIS_PROXY_URL (Cloudflare Worker) — ключ Gemini на сайт НЕ потрапляє.
+      # Інакше, для сумісності, ключ кладеться у файл (його видно в браузері — краще налаштуй проксі).
+      - name: Create gemini-config.js
+        env:
+          JARVIS_PROXY_URL: ${{ secrets.JARVIS_PROXY_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          echo "const geminiConfig = { apiKey: \"${{ secrets.GEMINI_API_KEY }}\" };" > gemini-config.js
+          if [ -n "$JARVIS_PROXY_URL" ]; then
+            printf 'const geminiConfig = { proxyUrl: "%s" };\n' "$JARVIS_PROXY_URL" > gemini-config.js
+          else
+            printf 'const geminiConfig = { apiKey: "%s" };\n' "$GEMINI_API_KEY" > gemini-config.js
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

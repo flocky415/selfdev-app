@@ -695,6 +695,9 @@ function renderDailyChallenges(){
     ensureDailyStatsFresh();
     ensureDailyChallengesFresh();
 
+    // Сезон, скриня, план дня й енергія Джарвіза рахуються з тих самих лічильників дня
+    if(typeof funnelRefresh === "function") funnelRefresh();
+
     const container = document.getElementById("dailyChallengesList");
 
     if(!container) return;
@@ -2213,12 +2216,19 @@ function getCompanionMoodClass(){
 const total = habits.length + goals.length;
 const done = habits.filter(h=>h.done).length + goals.filter(g=>g.done).length;
 
+// Енергія Джарвіза (funnel.js): без уваги він засинає, заряджений — радіє
+const petMoodId = typeof funnelPetMoodId === "function" ? funnelPetMoodId() : "";
+
+if(petMoodId === "sleepy") return "mood-sleepy";
+
 if(total===0) return "";
 
 const percent = done/total;
 
 if(percent>=1) return "mood-happy";
 if(percent===0) return "mood-sleepy";
+
+if(petMoodId === "happy") return "mood-happy";
 
 return "";
 

@@ -16,7 +16,7 @@ try{
 }
 
 // Змінюй номер версії, коли оновлюєш файли, щоб користувачі отримали свіжий кеш
-const CACHE = "selfdev-v71";
+const CACHE = "selfdev-v74";
 const WIDGET_CACHE = "selfdev-widget";
 const WIDGET_TAG = "selfdev-daily-widget";
 
@@ -29,6 +29,8 @@ const FILES = [
   "./design.css",
   "./ui.js",
   "./app.js",
+  "./funnel.js",
+  "./funnel.css",
   "./quotes.js",
   "./manifest.json",
   "./firebase-config.js",

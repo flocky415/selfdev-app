@@ -25,6 +25,7 @@
 
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="funnel.css">
 
 <meta name="theme-color" content="#0b1020">
 
@@ -242,6 +243,20 @@
 
 </div>
 
+<div class="card season-card b-full" id="seasonCard"></div>
+
+<div class="card b-wide" id="ritualCard"></div>
+
+<div class="card b-wide">
+
+<h3>🎯 Квести дня</h3>
+
+<div id="dailyChallengesList"></div>
+
+<div id="dailyChest" class="chest-row"></div>
+
+</div>
+
 <div class="card">
 
 <h3>🔥 Серія</h3>
@@ -261,6 +276,8 @@
 <p id="achievementText">Почни виконувати завдання 🚀</p>
 
 </div>
+
+<div class="card b-wide pet-card" id="petCard"></div>
 
 <div class="card daily-bonus-card b-wide">
 
@@ -659,23 +676,13 @@ onchange="importData(event)">
 
 <div class="page-head"><h2>Досягнення</h2></div>
 
-<p class="page-sub">Сфери життя, щоденні виклики та продуктивність</p>
+<p class="page-sub">Сфери життя та продуктивність</p>
 
 <div class="card">
 
 <h3>Сфери життя</h3>
 
 <div id="lifeSpheresList"></div>
-
-</div>
-
-<div class="card">
-
-<h3>Щоденні виклики</h3>
-
-<p class="card-note">Оновлюються щодня опівночі</p>
-
-<div id="dailyChallengesList"></div>
 
 </div>
 
@@ -872,6 +879,7 @@ onchange="importData(event)">
 <script src="cloud-sync.js"></script>
 <script src="ui.js"></script>
 <script src="app.js"></script>
+<script src="funnel.js"></script>
 <script src="firebase-config.js"></script>
 <script src="friends.js"></script>
 <script src="jarvis3d.js"></script>

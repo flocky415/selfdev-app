@@ -59,8 +59,25 @@ const jarvisSkins = [
     { id:"green", name:"Зелений", color:0x4ade80, unlockLevel:4 },
     { id:"purple", name:"Фіолетовий", color:0xa78bfa, unlockLevel:7 },
     { id:"pink", name:"Рожевий", color:0xf472b6, unlockLevel:10 },
-    { id:"midnight", name:"Опівнічний", color:0x475569, unlockLevel:14 }
+    { id:"midnight", name:"Опівнічний", color:0x475569, unlockLevel:14 },
+    // Нагороди сезонної стежки (funnel.js): відкриваються не рівнем, а пройденим сезоном
+    { id:"s-nebula", name:"Туманність", color:0x5b21b6, season:"Космос" },
+    { id:"s-abyss", name:"Глибина", color:0x0e7490, season:"Океан" },
+    { id:"s-moss", name:"Мох", color:0x4d7c0f, season:"Ліс" },
+    { id:"s-magma", name:"Магма", color:0xdc2626, season:"Вулкан" }
 ];
+
+function jarvisSkinUnlocked(skin){
+
+    if(skin.season){
+
+        return typeof seasonSkins !== "undefined" && seasonSkins.includes(skin.id);
+
+    }
+
+    return (typeof level !== "undefined" ? level : 1) >= skin.unlockLevel;
+
+}
 
 let jarvisSkinId = localStorage.getItem("jarvisSkin") || "classic";
 
@@ -1380,11 +1397,11 @@ function selectJarvisSkin(id){
 
     if(!skin) return;
 
-    const lvl = typeof level !== "undefined" ? level : 1;
+    if(!jarvisSkinUnlocked(skin)){
 
-    if(lvl < skin.unlockLevel){
-
-        showToast("🔒 Розблокується на рівні "+skin.unlockLevel);
+        showToast(skin.season
+            ? "🔒 Нагорода за пройдений сезон «"+skin.season+"»"
+            : "🔒 Розблокується на рівні "+skin.unlockLevel);
 
         return;
 
@@ -1413,11 +1430,9 @@ function renderJarvisSkinPicker(){
 
     container.innerHTML = "";
 
-    const lvl = typeof level !== "undefined" ? level : 1;
-
     jarvisSkins.forEach(skin=>{
 
-        const unlocked = lvl >= skin.unlockLevel;
+        const unlocked = jarvisSkinUnlocked(skin);
 
         const div = document.createElement("div");
 
@@ -1433,7 +1448,8 @@ function renderJarvisSkinPicker(){
         }else{
 
             div.innerText = "🔒";
-            div.title = skin.name+" — рівень "+skin.unlockLevel;
+            div.title = skin.season ? skin.name+" — нагорода сезону «"+skin.season+"»" : skin.name+" — рівень "+skin.unlockLevel;
+            div.onclick = ()=> selectJarvisSkin(skin.id);
 
         }
 
@@ -3254,7 +3270,7 @@ function jarvisBusyElsewhere(){
 
     return document.hidden
         || document.body.classList.contains("sheet-open")
-        || !!document.querySelector(".jarvis-chat-modal.show, .level-scene.show, .achievement-modal.show, .more-menu.show");
+        || !!document.querySelector(".jarvis-chat-modal.show, .level-scene.show, .achievement-modal.show, .more-menu.show, .fn-modal.show");
 
 }
 
@@ -3382,6 +3398,9 @@ function jarvisHintCandidates(){
         out.push({ text:"Вже пізно… Сон — теж ціль 😴", action:"yawn", w:5 });
 
     }
+
+    // Сезон, скриня, план дня, енергія — підказки з funnel.js
+    if(typeof funnelHints === "function") out.push(...safe(funnelHints, []));
 
     out.push(
         { text:"Склянка води — і мозок працює краще 💧", action:"nod", w:1 },

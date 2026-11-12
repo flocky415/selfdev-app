@@ -779,3 +779,75 @@ window.addEventListener("DOMContentLoaded", ()=>{
     uiUpdateFab();
 
 });
+
+// ----------------
+// Плавна поява карток під час гортання
+// ----------------
+// Картка спершу прозора й трохи нижче свого місця; коли вона входить у екран,
+// м'яко «випливає». Картки, що з'явилися одночасно, йдуть одна за одною.
+// Класи ставить лише JS — без скриптів усе видно одразу.
+
+function uiInitReveal(){
+
+    if(!("IntersectionObserver" in window)) return;
+
+    // Працює і тоді, коли в системі вимкнено анімації («менше руху»): це рішення власника
+    // застосунку. У такому режимі поява спокійніша — див. .card.reveal у design.css.
+
+    const cards = document.querySelectorAll("main .card");
+
+    if(!cards.length) return;
+
+    const finish = el => {
+
+        el.classList.remove("reveal", "reveal-in");
+        el.style.transitionDelay = "";
+
+    };
+
+    const observer = new IntersectionObserver(entries => {
+
+        let order = 0;
+
+        entries.forEach(entry => {
+
+            const el = entry.target;
+
+            if(entry.isIntersecting){
+
+                observer.unobserve(el);
+
+                const delay = Math.min(order++, 6) * 90;
+
+                el.style.transitionDelay = delay + "ms";
+                el.classList.add("reveal-in");
+
+                // Після появи прибираємо класи, щоб не заважати власним анімаціям картки
+                setTimeout(()=> finish(el), delay + 950);
+
+            }else if(entry.boundingClientRect.bottom < 0){
+
+                // Уже прогорнута вище екрана — показуємо без анімації
+                observer.unobserve(el);
+                finish(el);
+
+            }
+
+        });
+
+    }, { threshold: 0.08, rootMargin: "0px 0px -6% 0px" });
+
+    cards.forEach(el => {
+
+        el.classList.add("reveal");
+        observer.observe(el);
+
+    });
+
+}
+
+window.addEventListener("DOMContentLoaded", ()=>{
+
+    try{ uiInitReveal(); }catch(e){ console.error("uiInitReveal:", e); }
+
+});

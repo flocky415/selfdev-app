@@ -1,0 +1,207 @@
+/* © 2026 Roman Chelyk. Усі права захищено.
+   Воронка повернення: сезонна стежка, скриня дня, ритуал, енергія Джарвіза. */
+
+/* ---------- Сезонна стежка ---------- */
+
+.season-card{
+  background:
+    radial-gradient(120% 120% at 100% 0%,rgba(139,92,246,.22) 0%,transparent 55%),
+    var(--surface);
+}
+
+.season-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.season-head h3{ margin-bottom:4px; }
+.season-status{ font-size:14px; color:var(--muted); margin:0; }
+
+.season-timer{
+  flex:none; min-width:58px; padding:8px 10px; border-radius:14px; text-align:center;
+  background:var(--surface-2); border:1px solid var(--stroke);
+}
+.season-timer b{ display:block; font-family:var(--mono); font-size:20px; line-height:1.1; }
+.season-timer span{ font-size:11px; color:var(--muted); }
+.season-timer.tight{ border-color:rgba(249,115,22,.55); background:rgba(249,115,22,.14); }
+.season-timer.tight b{ color:#f97316; }
+
+.season-body{ display:grid; gap:16px; margin-top:14px; }
+
+@media (min-width:760px){
+  .season-body{ grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); align-items:center; }
+}
+
+.season-map{ width:100%; max-width:440px; height:auto; display:block; margin:0 auto; overflow:visible; }
+
+.sp-track,.sp-done{ fill:none; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+.sp-track{ stroke:var(--surface-3); stroke-dasharray:1 11; }
+.sp-done{ stroke:var(--accent); }
+
+.sn circle{ fill:var(--surface-2); stroke:var(--surface-3); stroke-width:2; }
+.sn text{ fill:var(--muted); font-family:var(--mono); font-size:11px; font-weight:700; pointer-events:none; }
+.sn.gift{ cursor:pointer; }
+.sn.gift text{ font-size:16px; }
+.sn.gift circle{ stroke:rgba(250,204,21,.55); }
+.sn.done circle{ fill:var(--accent); stroke:var(--accent); }
+.sn.done text{ fill:#fff; }
+.sn.next circle{ stroke:var(--accent); stroke-width:3; animation:snPulse 1.8s ease-in-out infinite; }
+.sn.next text{ fill:var(--text); }
+.sn.ready circle{ fill:#facc15; stroke:#fde68a; animation:snPulse 1.2s ease-in-out infinite; }
+
+@keyframes snPulse{
+  0%,100%{ stroke-opacity:1; }
+  50%{ stroke-opacity:.35; }
+}
+
+.season-progress{ font-size:14px; color:var(--muted); }
+.season-progress b{ font-family:var(--mono); font-size:26px; color:var(--text); }
+
+.season-bar,.pet-bar{ height:8px; border-radius:9px; background:var(--surface-3); overflow:hidden; margin:8px 0 12px; }
+.season-bar div{ height:100%; border-radius:9px; background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .6s ease; }
+
+.season-rewards{ display:grid; gap:6px; }
+
+.season-reward{
+  display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--stroke); font-size:13px;
+}
+.season-reward .sr-step{
+  flex:none; width:28px; height:28px; border-radius:50%; display:grid; place-items:center;
+  background:var(--surface-3); font-family:var(--mono); font-size:11px; font-weight:700;
+}
+.season-reward .sr-text{ flex:1; min-width:0; }
+.season-reward .sr-state{ opacity:.7; }
+.season-reward.claimed{ opacity:.55; }
+.season-reward.ready{ background:rgba(250,204,21,.14); border-color:rgba(250,204,21,.5); }
+.season-reward button,
+.chest-row button{
+  width:auto; margin:0; padding:7px 12px; border:none; border-radius:10px; cursor:pointer;
+  background:#facc15; color:#3b2f00; font-weight:800; font-size:13px;
+}
+
+.season-note{ font-size:12px; color:var(--muted); margin:10px 0 0; }
+.season-note.warn{ color:#f97316; }
+.season-trophies{ font-size:18px; margin:10px 0 0; letter-spacing:2px; }
+
+/* ---------- Скриня дня ---------- */
+
+.chest-row{
+  display:flex; align-items:center; gap:12px; margin-top:10px; padding:12px 14px;
+  border-radius:14px; border:1px dashed var(--surface-3); background:var(--surface-2);
+}
+.chest-icon{ font-size:28px; }
+.chest-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.chest-info small{ color:var(--muted); }
+.chest-state{ opacity:.7; font-size:18px; }
+.chest-row.ready{ border-style:solid; border-color:rgba(250,204,21,.6); background:rgba(250,204,21,.14); }
+.chest-row.ready .chest-icon{ animation:chestShake 1.1s ease-in-out infinite; }
+.chest-row.opened{ opacity:.75; }
+
+@keyframes chestShake{
+  0%,60%,100%{ transform:rotate(0); }
+  70%{ transform:rotate(-12deg) scale(1.1); }
+  80%{ transform:rotate(10deg) scale(1.1); }
+  90%{ transform:rotate(-6deg); }
+}
+
+/* ---------- Ритуал ---------- */
+
+.ritual-sub{ font-size:14px; color:var(--muted); margin:0 0 10px; }
+.ritual-done{ font-size:14px; color:var(--muted); margin:10px 0 0; }
+
+.ritual-btn,.fn-ok{
+  width:100%; margin:0; padding:12px 14px; border:none; border-radius:14px; cursor:pointer;
+  background:var(--accent); color:#fff; font:inherit; font-weight:700;
+}
+.ritual-btn.evening{ margin-top:10px; background:linear-gradient(135deg,#4f46e5,#7c3aed); }
+.ritual-link{
+  width:auto; margin:8px 0 0; padding:4px 0; border:none; background:none; cursor:pointer;
+  color:var(--muted); font:inherit; font-size:13px; text-decoration:underline;
+}
+
+.plan-list,.pick-list{ display:grid; gap:6px; }
+.pick-list{ max-height:38vh; overflow-y:auto; margin:10px 0; }
+
+.plan-item,.pick-item{
+  display:flex; align-items:center; gap:10px; width:100%; margin:0; padding:10px 12px;
+  border-radius:12px; border:1px solid var(--stroke); background:var(--surface-2);
+  color:var(--text); font:inherit; text-align:left; cursor:pointer;
+}
+.plan-check{
+  flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+  border:2px solid var(--surface-3); font-size:13px; font-weight:800; color:#fff;
+}
+.plan-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.plan-kind{ flex:none; font-size:11px; color:var(--muted); }
+.plan-item.done .plan-check{ background:var(--success); border-color:var(--success); }
+.plan-item.done .plan-name{ text-decoration:line-through; opacity:.6; }
+.pick-item.on{ border-color:var(--accent); background:var(--accent-soft); }
+.pick-item.on .plan-check{ background:var(--accent); border-color:var(--accent); }
+
+/* ---------- Енергія Джарвіза ---------- */
+
+.pet-row{ display:flex; align-items:center; gap:14px; cursor:pointer; }
+.pet-face{
+  flex:none; width:56px; height:56px; border-radius:18px; display:grid; place-items:center;
+  background:var(--surface-2); font-size:30px;
+}
+.pet-info{ flex:1; min-width:0; }
+.pet-info small{ color:var(--muted); }
+.pet-bar{ margin:6px 0; }
+.pet-bar div{ height:100%; border-radius:9px; background:var(--success); transition:width .6s ease; }
+.pet-ok .pet-bar div{ background:#84cc16; }
+.pet-sad .pet-bar div{ background:#f59e0b; }
+.pet-sleepy .pet-bar div{ background:var(--danger); }
+.pet-sleepy .pet-face{ animation:petDoze 3s ease-in-out infinite; }
+.pet-bond{ font-size:12px; color:var(--muted); margin:10px 0 0; }
+
+@keyframes petDoze{
+  0%,100%{ transform:rotate(0); }
+  50%{ transform:rotate(-8deg) translateY(2px); }
+}
+
+/* ---------- Модальне вікно воронки ---------- */
+
+.fn-modal{
+  position:fixed; inset:0; z-index:1200; display:grid; place-items:center; padding:16px;
+  background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .2s ease;
+}
+.fn-modal.show{ opacity:1; pointer-events:auto; }
+
+.fn-modal-box{
+  width:100%; max-width:440px; max-height:88vh; overflow-y:auto; padding:20px;
+  border-radius:var(--radius); background:var(--surface); color:var(--text);
+  border:1px solid var(--stroke); box-shadow:var(--shadow);
+  transform:translateY(14px) scale(.97); transition:transform .25s var(--ease-spring);
+}
+.fn-modal.show .fn-modal-box{ transform:none; }
+
+.fn-modal-box h3{ font-size:18px; margin:0 0 6px; display:flex; justify-content:space-between; gap:10px; }
+.fn-modal-box h4{ font-size:15px; margin:16px 0 4px; display:flex; justify-content:space-between; gap:10px; }
+.fn-sub{ font-size:13px; color:var(--muted); margin:0; }
+.pick-count{ font-family:var(--mono); font-size:13px; color:var(--muted); }
+
+.fn-actions{ display:flex; gap:10px; margin-top:14px; }
+.fn-actions .fn-ok{ flex:1.6; }
+.fn-cancel{
+  flex:1; margin:0; padding:12px 14px; border-radius:14px; cursor:pointer; font:inherit; font-weight:600;
+  border:1px solid var(--stroke); background:var(--surface-2); color:var(--text);
+}
+
+.sum-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.sum-stat{ padding:10px 12px; border-radius:12px; background:var(--surface-2); border:1px solid var(--stroke); }
+.sum-stat b{ display:block; font-family:var(--mono); font-size:18px; }
+.sum-stat span{ font-size:12px; color:var(--muted); }
+
+.fn-reveal{ text-align:center; }
+.fn-reveal h3{ justify-content:center; font-size:20px; }
+.fn-reveal-icon{ font-size:72px; line-height:1.1; animation:fnPop .6s var(--ease-spring); }
+.fn-reveal-text{ font-family:var(--mono); font-size:18px; font-weight:700; margin:6px 0; }
+.fn-reveal-note{ font-size:13px; color:var(--muted); margin:0 0 14px; }
+.fn-reveal .fn-ok{ margin-top:10px; }
+
+@keyframes fnPop{
+  0%{ transform:scale(.2) rotate(-20deg); opacity:0; }
+  100%{ transform:none; opacity:1; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .sn.next circle,.sn.ready circle,.chest-row.ready .chest-icon,.pet-sleepy .pet-face,.fn-reveal-icon{ animation:none; }
+}

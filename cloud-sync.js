@@ -33,7 +33,10 @@ const SYNC_KEYS = [
     "habitSortMode", "goalSortMode",
     "myFriendCode", "myFriendName", "friendCodes",
     "jarvisSkin", "jarvisCostume", "jarvisMovement",
-    "favoriteQuotes", "jarvisHints"
+    "favoriteQuotes", "jarvisHints",
+    "seasonState", "seasonSkins", "seasonTrophies",
+    "chestOpenedDate", "chestLastReward",
+    "dayPlan", "nextPlan", "eveningDate", "dayXpStart", "jarvisPet"
 ];
 
 const FRIEND_KEYS = ["myFriendCode", "myFriendName", "friendCodes"];
